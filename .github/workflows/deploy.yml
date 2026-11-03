@@ -165,21 +165,21 @@ jobs:
           settings_file = ROOT / 'src/components/menu-bar/settings-menu.jsx'
           settings = settings_file.read_text(encoding='utf-8')
           if 'scratch-open-modes' not in settings:
-              theme = '<ThemeMenu onRequestCloseSettings={onRequestClose} />'
-              if theme not in settings:
-                  raise RuntimeError('Could not locate Theme menu in Settings')
-              settings = settings.replace(theme, theme + '''
-                          <div
-                              role="menuitem"
-                              tabIndex="0"
-                              style={{padding: '8px 12px', cursor: 'pointer'}}
-                              onMouseUp={() => window.dispatchEvent(new Event('scratch-open-modes'))}
-                              onKeyDown={event => {
-                                  if (event.key === 'Enter' || event.key === ' ') {
-                                      window.dispatchEvent(new Event('scratch-open-modes'));
-                                  }
-                              }}
-                          >Modes</div>''', 1)
+              theme_expression = '{canChangeTheme && <ThemeMenu onRequestCloseSettings={onRequestClose} />}'
+              if theme_expression not in settings:
+                  raise RuntimeError('Could not locate complete Theme menu expression in Settings')
+              settings = settings.replace(theme_expression, theme_expression + '''
+                      <div
+                          role="menuitem"
+                          tabIndex="0"
+                          style={{padding: '8px 12px', cursor: 'pointer'}}
+                          onMouseUp={() => window.dispatchEvent(new Event('scratch-open-modes'))}
+                          onKeyDown={event => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                  window.dispatchEvent(new Event('scratch-open-modes'));
+                              }
+                          }}
+                      >Modes</div>''', 1)
           settings_file.write_text(settings, encoding='utf-8')
           
           # Blue top bar and hide the requested controls.
