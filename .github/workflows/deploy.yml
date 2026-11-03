@@ -41,6 +41,31 @@ jobs:
         working-directory: scratch-gui-src
         run: npm ci
 
+      -       - name: Remove Share, Backpack, and User buttons
+        working-directory: scratch-gui-src
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/components/menu-bar/menu-bar.jsx")
+          text = path.read_text(encoding="utf-8")
+
+          # Hide the entire right-side account button group,
+          # including Share-related account controls.
+          start = text.find('<div className={styles.accountInfoGroup}>')
+          if start == -1:
+              raise SystemExit("Could not find accountInfoGroup")
+
+          end_marker = '\n</div>\n\n{aboutButton}'
+          end = text.find(end_marker, start)
+
+          if end == -1:
+              raise SystemExit("Could not find end of accountInfoGroup")
+
+          text = text[:start] + '<div className={styles.accountInfoGroup} />' + text[end + len(end_marker) - len('{aboutButton}'):]
+          path.write_text(text, encoding="utf-8")
+          PY
+
       - name: Build Scratch GUI
         working-directory: scratch-gui-src
         run: npm run build
