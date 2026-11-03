@@ -2,19 +2,111 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Scratch 3.0</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2f80c9">
+  <title>Blueyfans Rather Odd Scratch Editor Of Zany Mystery</title>
   <style>
-    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-    iframe { display: block; width: 100%; height: 100%; border: 0; }
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 35px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #d9efff;
+      color: #24384b;
+      font-family: "Comic Sans MS", "Comic Sans", cursive;
+    }
+
+    main {
+      width: 100%;
+      max-width: 720px;
+      padding: 38px 30px 32px;
+      text-align: center;
+      background: #ffffff;
+      border: 3px solid #75b8e8;
+      border-radius: 12px;
+      box-shadow: 5px 6px 0 #a9d5f2;
+    }
+
+    h1 {
+      margin: 0 auto 18px;
+      max-width: 620px;
+      color: #246eae;
+      font-size: clamp(30px, 6vw, 48px);
+      line-height: 1.18;
+      font-weight: bold;
+    }
+
+    .subtitle {
+      max-width: 510px;
+      margin: 0 auto 28px;
+      color: #526b7e;
+      font-size: 17px;
+      line-height: 1.5;
+    }
+
+    .launch {
+      display: inline-block;
+      padding: 13px 25px;
+      border: 2px solid #1e659f;
+      border-radius: 8px;
+      background: #398bd0;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      text-decoration: none;
+      box-shadow: 0 4px 0 #1e659f;
+      transition: background-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+    }
+
+    .launch:hover {
+      background: #2679bd;
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #1e659f;
+    }
+
+    .launch:active {
+      transform: translateY(4px);
+      box-shadow: none;
+    }
+
+    .launch:focus-visible {
+      outline: 3px solid #f2b544;
+      outline-offset: 4px;
+    }
+
+    .footer {
+      margin-top: 28px;
+      color: #7892a6;
+      font-size: 13px;
+    }
+
+    @media (max-width: 480px) {
+      main {
+        padding: 30px 18px 26px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition: none !important;
+      }
+    }
   </style>
 </head>
 <body>
-  <iframe
-    title="Scratch 3.0 Editor"
-    src="https://scratchfoundation.github.io/scratch-gui/"
-    allow="camera; microphone; autoplay; clipboard-read; clipboard-write; fullscreen"
-    allowfullscreen>
-  </iframe>
+  <main>
+    <h1>Blueyfans Rather Odd Scratch Editor Of Zany Mystery</h1>
+    <p class="subtitle">
+      Welcome! Make something weird, try out some blocks, and have fun.
+    </p>
+    <a class="launch" href="/editor/">Launch Editor &raquo;</a>
+    <div class="footer">A little corner of the internet.</div>
+  </main>
 </body>
 </html>
