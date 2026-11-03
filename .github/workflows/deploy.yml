@@ -316,14 +316,36 @@ jobs:
                   panel.querySelector('#kreset').addEventListener('click', resetChaos);
                   panel.querySelector('#kclose').addEventListener('click', () => panel.remove());
               }
+              // A dedicated launcher keeps Modes accessible even if Scratch's
+              // Settings dropdown layout changes between GUI versions.
+              function addModesButton () {
+                  if (!document.body || document.getElementById('krypto-modes-launcher')) return;
+                  const button = document.createElement('button');
+                  button.id = 'krypto-modes-launcher';
+                  button.type = 'button';
+                  button.textContent = 'Modes';
+                  Object.assign(button.style, {
+                      position: 'fixed', top: '58px', right: '14px', zIndex: '999997',
+                      padding: '8px 14px', border: '1px solid #0d5598', borderRadius: '7px',
+                      background: '#1677d2', color: '#fff', font: 'bold 13px Arial',
+                      cursor: 'pointer', boxShadow: '0 2px 8px #0003'
+                  });
+                  button.addEventListener('click', openPanel);
+                  document.body.appendChild(button);
+              }
               window.addEventListener('scratch-open-modes', openPanel);
               window.addEventListener('scratch-chaos', () => {
                   document.body.classList.add('krypto-chaos');
                   toast('ENDLESS SUFFERING AND DESPAIR — Reset Chaos or press Escape to restore the interface.');
               });
-              document.addEventListener('scratch-workspace-ready', () => { attachWorkspace(); refreshLocks(); });
+              window.addEventListener('scratch-workspace-ready', () => { attachWorkspace(); refreshLocks(); });
               document.addEventListener('keydown', event => { if (event.key === 'Escape') resetChaos(); });
-              const observer = new MutationObserver(() => { attachWorkspace(); refreshLocks(); });
+              const observer = new MutationObserver(() => { addModesButton(); attachWorkspace(); refreshLocks(); });
+              if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', addModesButton, {once: true});
+              } else {
+                  addModesButton();
+              }
               observer.observe(document.documentElement, {childList:true, subtree:true});
               const style = document.createElement('style');
               style.textContent = `
