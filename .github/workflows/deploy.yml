@@ -1,3 +1,4 @@
+
 name: Build and Deploy Scratch Editor
 
 on:
@@ -23,6 +24,13 @@ jobs:
       - name: Checkout website
         uses: actions/checkout@v4
 
+      - name: Check custom sprite
+        run: |
+          if [ ! -f Sprite1.sprite3 ]; then
+            echo "ERROR: Sprite1.sprite3 must be in the repository root."
+            exit 1
+          fi
+
       - name: Checkout Scratch GUI source
         uses: actions/checkout@v4
         with:
@@ -42,238 +50,284 @@ jobs:
         run: npm ci
 
       - name: Customize Scratch Editor
-        working-directory: scratch-gui-src
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import json
           import re
-          import shutil
           import zipfile
+          import shutil
 
-          # The sprite must be committed at the root of the website repository.
-          sprite_zip = Path("../Sprite1.sprite3")
-          if not sprite_zip.is_file():
-              raise SystemExit(
-                  "Sprite1.sprite3 is missing. Upload it to the root of "
-                  "your GitHub repository and commit it to main."
-              )
+          root = Path("scratch-gui-src")
+          sprite_file = Path("Sprite1.sprite3")
 
-          default_dir = Path("src/lib/default-project")
-          custom_dir = default_dir / "custom-sprite"
+          # --------------------------------------------------
+          # 1. Read the exported Scratch sprite.
+          # --------------------------------------------------
 
-          if custom_dir.exists():
-              shutil.rmtree(custom_dir)
-          custom_dir.mkdir(parents=True)
+          with zipfile.ZipFile(sprite_file, "r") as archive:
+              names = archive.namelist()
 
-          # Extract the sprite3 archive safely.
-          with zipfile.ZipFile(sprite_zip) as archive:
-              root = custom_dir.resolve()
-              for info in archive.infolist():
-                  target = (custom_dir / info.filename).resolve()
-                  if not target.is_relative_to(root):
-                      raise SystemExit("Unsafe path in sprite archive.")
-              archive.extractall(custom_dir)
-
-          sprite_json_path = custom_dir / "sprite.json"
-          if not sprite_json_path.is_file():
-              raise SystemExit("Sprite1.sprite3 does not contain sprite.json.")
-
-          sprite = json.loads(sprite_json_path.read_text(encoding="utf-8"))
-
-          # Replace the default Scratch Cat target with the uploaded sprite.
-          project_path = default_dir / "project-data.js"
-          project_text = project_path.read_text(encoding="utf-8")
-
-          import_line = (
-              "import customSpriteRaw from "
-              "'!raw-loader!./custom-sprite/sprite.json?';"
-          )
-          shared_import = "import sharedMessages from '../shared-messages';"
-
-          if import_line not in project_text:
-              if shared_import not in project_text:
-                  raise SystemExit(
-                      "Could not find the expected import in project-data.js."
+              if "project.json" not in names:
+                  raise RuntimeError(
+                      "Sprite1.sprite3 does not contain project.json."
                   )
-              project_text = project_text.replace(
-                  shared_import,
-                  shared_import + "\n" + import_line,
-                  1
+
+              project = json.loads(
+                  archive.read("project.json").decode("utf-8")
               )
 
-          targets_pos = project_text.find("targets: [")
-          false_pos = project_text.find("isStage: false", targets_pos)
-          if targets_pos == -1 or false_pos == -1:
-              raise SystemExit(
-                  "Could not locate the default sprite in project-data.js."
+              sprites = [
+                  target for target in project.get("targets", [])
+                  if not target.get("isStage", False)
+              ]
+
+              if not sprites:
+                  raise RuntimeError(
+                      "No sprite was found inside Sprite1.sprite3."
+                  )
+
+              sprite = sprites[0]
+
+              asset_dir = root / "src/lib/default-project/custom-sprite"
+              if asset_dir.exists():
+                  shutil.rmtree(asset_dir)
+              asset_dir.mkdir(parents=True)
+
+              asset_files = {}
+
+              for target in sprites:
+                  for item in target.get("costumes", []) + target.get("sounds", []):
+                      filename = item.get("md5ext")
+                      if not filename:
+                          continue
+
+                      if filename not in names:
+                          raise RuntimeError(
+                              "Missing sprite asset in archive: " + filename
+                          )
+
+                      destination = asset_dir / Path(filename).name
+                      destination.write_bytes(archive.read(filename))
+                      asset_files[filename] = destination
+
+          # --------------------------------------------------
+          # 2. Replace the default Scratch Cat project data.
+          # --------------------------------------------------
+
+          default_dir = root / "src/lib/default-project"
+          original_data = default_dir / "project-data.js"
+          backup_data = default_dir / "base-project-data.js"
+
+          if not original_data.exists():
+              raise RuntimeError("Scratch default project-data.js was not found.")
+
+          if not backup_data.exists():
+              original_data.rename(backup_data)
+
+          sprite_json = json.dumps(sprite, ensure_ascii=False)
+
+          replacement = f"""
+          import baseProjectData from './base-project-data';
+
+          const customSprite = {sprite_json};
+
+          const projectData = translator => {{
+              const data = baseProjectData(translator);
+              data.targets = data.targets.filter(target => target.isStage);
+              data.targets.push(customSprite);
+              return data;
+          }};
+
+          export default projectData;
+          """
+
+          original_data.write_text(replacement, encoding="utf-8")
+
+          # --------------------------------------------------
+          # 3. Add the sprite's image and sound assets.
+          # --------------------------------------------------
+
+          index_file = default_dir / "index.js"
+          index_text = index_file.read_text(encoding="utf-8")
+
+          if "const defaultProject = translator =>" not in index_text:
+              raise RuntimeError(
+                  "Unexpected Scratch default-project index.js structure."
               )
 
-          object_start = project_text.rfind("{", targets_pos, false_pos)
-          depth = 0
-          object_end = -1
-
-          for i in range(object_start, len(project_text)):
-              if project_text[i] == "{":
-                  depth += 1
-              elif project_text[i] == "}":
-                  depth -= 1
-                  if depth == 0:
-                      object_end = i + 1
-                      break
-
-          if object_start == -1 or object_end == -1:
-              raise SystemExit(
-                  "Could not identify the default sprite object."
-              )
-
-          project_text = (
-              project_text[:object_start]
-              + "JSON.parse(customSpriteRaw)"
-              + project_text[object_end:]
-          )
-          project_path.write_text(project_text, encoding="utf-8")
-
-          # Import the custom sprite's costume and sound assets into the build.
-          index_path = default_dir / "index.js"
-          index_text = index_path.read_text(encoding="utf-8")
-
-          import_anchor = (
-              "import costume2 from "
-              "'!raw-loader!./0fb9be3e8397c983338cb71dc84d0b25.svg?';"
-          )
-
-          if import_anchor not in index_text:
-              raise SystemExit(
-                  "Could not find the expected asset imports in index.js."
-              )
-
-          asset_imports = []
-          asset_entries = []
+          imports = []
+          entries = []
           asset_number = 0
 
-          for category in ("costumes", "sounds"):
-              for item in sprite.get(category, []):
-                  filename = Path(item["md5ext"]).name
-                  asset_path = custom_dir / filename
+          for filename, path in asset_files.items():
+              item = next(
+                  item
+                  for item in sprite.get("costumes", []) + sprite.get("sounds", [])
+                  if item.get("md5ext") == filename
+              )
 
-                  if not asset_path.is_file():
-                      raise SystemExit(
-                          f"Sprite asset is missing: {filename}"
-                      )
+              data_format = item.get("dataFormat", "").lower()
+              variable = f"customAsset{asset_number}"
+              relative_path = "./custom-sprite/" + path.name
 
-                  extension = asset_path.suffix.lower()
-                  variable = f"customAsset{asset_number}"
-                  asset_number += 1
+              if data_format == "svg":
+                  imports.append(
+                      f"import {variable} from '!raw-loader!{relative_path}?';"
+                  )
+                  asset_data = f"encoder.encode({variable})"
+                  asset_type = "ImageVector"
+                  output_format = "SVG"
 
-                  if extension == ".svg":
-                      loader = "raw-loader"
-                      asset_type = "ImageVector"
-                      data_expression = f"encoder.encode({variable})"
-                  elif extension in (".png", ".jpg", ".jpeg", ".bmp"):
-                      loader = "arraybuffer-loader"
-                      asset_type = "ImageBitmap"
-                      data_expression = f"new Uint8Array({variable})"
-                  elif extension in (".wav", ".mp3", ".ogg"):
-                      loader = "arraybuffer-loader"
+              else:
+                  imports.append(
+                      f"import {variable} from '!arraybuffer-loader!{relative_path}?';"
+                  )
+                  asset_data = f"new Uint8Array({variable})"
+
+                  if data_format == "wav":
                       asset_type = "Sound"
-                      data_expression = f"new Uint8Array({variable})"
+                      output_format = "WAV"
                   else:
-                      raise SystemExit(
-                          f"Unsupported sprite asset type: {filename}"
-                      )
+                      asset_type = "ImageBitmap"
+                      output_format = data_format.upper()
 
-                  asset_imports.append(
-                      f"import {variable} from "
-                      f"'!{loader}!./custom-sprite/{filename}?';"
+              asset_id = item.get("assetId")
+              if not asset_id:
+                  raise RuntimeError(
+                      "An asset in Sprite1.sprite3 has no assetId."
                   )
 
-                  data_format = item.get(
-                      "dataFormat", extension.lstrip(".")
-                  ).upper()
+              entries.append(
+                  "{ id: " + json.dumps(asset_id) +
+                  ", assetType: " + json.dumps(asset_type) +
+                  ", dataFormat: " + json.dumps(output_format) +
+                  ", data: " + asset_data + " }"
+              )
 
-                  asset_entries.append(
-                      "    {\n"
-                      f"        id: {json.dumps(item['assetId'])},\n"
-                      f"        assetType: {json.dumps(asset_type)},\n"
-                      f"        dataFormat: {json.dumps(data_format)},\n"
-                      f"        data: {data_expression}\n"
-                      "    }"
-                  )
+              asset_number += 1
 
+          import_marker = "const defaultProject = translator =>"
           index_text = index_text.replace(
-              import_anchor,
-              import_anchor + "\n" + "\n".join(asset_imports),
+              import_marker,
+              "\n".join(imports) + "\n\n" + import_marker,
               1
           )
 
-          array_end = "    }];\n};\nexport default defaultProject;"
-          if array_end not in index_text:
-              raise SystemExit(
-                  "Could not find the end of the default asset list in index.js."
+          end = index_text.rfind("];")
+          if end == -1:
+              raise RuntimeError(
+                  "Could not locate the end of the default project asset array."
               )
 
-          replacement = (
-              "    },\n"
-              + ",\n".join(asset_entries)
-              + "\n    ];\n};\nexport default defaultProject;"
+          if entries:
+              index_text = (
+                  index_text[:end].rstrip()
+                  + ",\n"
+                  + ",\n".join(entries)
+                  + "\n"
+                  + index_text[end:]
+              )
+
+          index_file.write_text(index_text, encoding="utf-8")
+
+          # --------------------------------------------------
+          # 4. Remove Share and See Project Page controls.
+          # --------------------------------------------------
+
+          menu_file = root / "src/components/menu-bar/menu-bar.jsx"
+          menu = menu_file.read_text(encoding="utf-8")
+
+          share_start = menu.find(
+              '<div\n                        className={classNames(styles.menuBarItem)}>\n'
+              '                        {this.props.canShare ? ('
           )
-          index_text = index_text.replace(array_end, replacement, 1)
-          index_path.write_text(index_text, encoding="utf-8")
 
-          # Hide the Share button by giving it a dedicated CSS class.
-          menu_path = Path("src/components/menu-bar/menu-bar.jsx")
-          menu = menu_path.read_text(encoding="utf-8")
+          if share_start == -1:
+              raise RuntimeError(
+                  "Could not find the Share button section in menu-bar.jsx."
+              )
 
-          menu, share_count = re.subn(
-              r'(<ShareButton\b[^>]*?\bclassName=)\{styles\.menuBarButton\}',
-              r'\1{classNames(styles.menuBarButton, styles.shareButton)}',
-              menu
+          share_end = menu.find("</div>", share_start)
+          if share_end == -1:
+              raise RuntimeError("Could not find the end of the Share section.")
+
+          share_end += len("</div>")
+
+          menu = (
+              menu[:share_start]
+              + '<div className={classNames(styles.menuBarItem)}>'
+                '{this.props.canRemix ? remixButton : []}</div>'
+              + menu[share_end:]
           )
 
-          if share_count == 0:
-              raise SystemExit("Could not locate the Share button.")
+          community_start = menu.find(
+              '<div className={classNames(styles.menuBarItem, styles.communityButtonWrapper)}>'
+          )
 
-          menu_path.write_text(menu, encoding="utf-8")
+          if community_start == -1:
+              raise RuntimeError(
+                  "Could not find the See Project Page section."
+              )
 
-          # Hide the Share, Backpack, account/profile, and project-page buttons.
-          css_path = Path("src/components/menu-bar/menu-bar.css")
-          css = css_path.read_text(encoding="utf-8")
-          css += """
+          community_end = menu.find("</div>", community_start)
+          if community_end == -1:
+              raise RuntimeError(
+                  "Could not find the end of the community button section."
+              )
 
-          /* Custom editor layout */
-          .shareButton {
-              display: none !important;
+          community_end += len("</div>")
+          menu = menu[:community_start] + menu[community_end:]
+
+          menu = menu.replace(
+              "import ShareButton from './share-button.jsx';",
+              ""
+          )
+
+          menu_file.write_text(menu, encoding="utf-8")
+
+          # --------------------------------------------------
+          # 5. Hide the account/user controls and Backpack.
+          # --------------------------------------------------
+
+          gui_file = root / "src/components/gui/gui.jsx"
+          gui = gui_file.read_text(encoding="utf-8")
+
+          gui = gui.replace(
+              "{backpackVisible ? (",
+              "{false && backpackVisible ? ("
+          )
+
+          gui_file.write_text(gui, encoding="utf-8")
+
+          # --------------------------------------------------
+          # 6. Apply a blue top bar.
+          # --------------------------------------------------
+
+          css_file = root / "src/components/menu-bar/menu-bar.css"
+
+          blue_css = """
+          /* Custom blue top bar */
+          .menu-bar {
+              background-color: #1677d2 !important;
           }
 
-          .accountInfoGroup {
-              display: none !important;
+          .menu-bar-item.active,
+          .menu-bar-item.hoverable:hover {
+              background-color: #105da8 !important;
           }
 
-          .communityButtonWrapper {
+          .account-info-group > :not(:first-child) {
               display: none !important;
           }
           """
-          css_path.write_text(css, encoding="utf-8")
 
-          # Disable the Backpack in the GUI layout.
-          gui_path = Path("src/components/gui/gui.jsx")
-          gui = gui_path.read_text(encoding="utf-8")
-          old_condition = "{backpackVisible ? ("
+          with css_file.open("a", encoding="utf-8") as file:
+              file.write("\n" + blue_css + "\n")
 
-          if old_condition not in gui:
-              raise SystemExit(
-                  "Could not find the Backpack visibility condition in gui.jsx."
-              )
-
-          gui = gui.replace(
-              old_condition,
-              "{false && backpackVisible ? (",
-              1
-          )
-          gui_path.write_text(gui, encoding="utf-8")
-
-          print("Custom sprite and editor button changes applied.")
+          print("Scratch customizations completed successfully.")
+          print("Default sprite:", sprite.get("name", "Custom Sprite"))
+          print("Custom assets:", len(asset_files))
           PY
 
       - name: Build Scratch GUI
