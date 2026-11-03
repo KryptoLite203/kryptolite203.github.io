@@ -1,4 +1,3 @@
-
 name: Build and Deploy Scratch Editor
 
 on:
@@ -18,23 +17,20 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout website
         uses: actions/checkout@v4
 
-      - name: Check sprite file
+      - name: Check required files
         run: |
-          test -f Sprite1.sprite3 || {
-            echo "Sprite1.sprite3 is missing from the repository root."
-            exit 1
-          }
+          test -f index.html || { echo "index.html is missing"; exit 1; }
+          test -f Sprite1.sprite3 || { echo "Sprite1.sprite3 is missing from the repository root"; exit 1; }
 
-      - name: Checkout Scratch GUI
+      - name: Checkout matching Scratch GUI source
         uses: actions/checkout@v4
         with:
           repository: scratchfoundation/scratch-gui
-          ref: develop
+          ref: dae2a97a5bb0cd8a7513fafd60f9e7488f2a89a4
           path: scratch-gui-src
 
       - name: Set up Node.js
@@ -44,231 +40,306 @@ jobs:
           cache: npm
           cache-dependency-path: scratch-gui-src/package-lock.json
 
-      - name: Install dependencies
+      - name: Install Scratch dependencies
         working-directory: scratch-gui-src
         run: npm ci
 
-      - name: Customize Scratch
+      - name: Apply KryptoLite customizations
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import json
           import zipfile
-          import re
           import shutil
-
-          root = Path("scratch-gui-src")
-          default = root / "src/lib/default-project"
-
-          # Read the exported Scratch sprite.
-          with zipfile.ZipFile("Sprite1.sprite3") as archive:
+          
+          ROOT = Path('scratch-gui-src')
+          DEFAULT = ROOT / 'src/lib/default-project'
+          
+          # 1) Use the supplied Scratch sprite export as the default sprite.
+          with zipfile.ZipFile('Sprite1.sprite3') as archive:
               names = archive.namelist()
-
-              if "sprite.json" not in names:
-                  raise RuntimeError("sprite.json is missing from Sprite1.sprite3")
-
-              sprite = json.loads(archive.read("sprite.json"))
-
-              if sprite.get("isStage"):
-                  raise RuntimeError("Sprite1.sprite3 contains a Stage, not a sprite.")
-
-              asset_folder = default / "custom-sprite"
-              if asset_folder.exists():
-                  shutil.rmtree(asset_folder)
-              asset_folder.mkdir(parents=True)
-
-              assets = []
-              for item in sprite.get("costumes", []) + sprite.get("sounds", []):
-                  filename = item.get("md5ext")
+              if 'sprite.json' not in names:
+                  raise RuntimeError('Sprite1.sprite3 must contain sprite.json')
+              sprite = json.loads(archive.read('sprite.json'))
+              if sprite.get('isStage'):
+                  raise RuntimeError('Sprite1.sprite3 contains a Stage, not a sprite')
+              items = sprite.get('costumes', []) + sprite.get('sounds', [])
+              asset_dir = DEFAULT / 'custom-sprite'
+              if asset_dir.exists():
+                  shutil.rmtree(asset_dir)
+              asset_dir.mkdir(parents=True)
+              for item in items:
+                  filename = item.get('md5ext')
                   if not filename or filename not in names:
-                      raise RuntimeError(f"Missing sprite asset: {filename}")
-
-                  safe_name = Path(filename).name
-                  (asset_folder / safe_name).write_bytes(archive.read(filename))
-
-                  assets.append({
-                      "item": item,
-                      "filename": safe_name
-                  })
-
-          # Generate a JavaScript module containing the complete sprite,
-          # including its scripts, costumes, sounds, and properties.
-          (default / "custom-sprite.js").write_text(
-              "export default " + json.dumps(sprite, ensure_ascii=False) + ";\n",
-              encoding="utf-8"
+                      raise RuntimeError(f'Missing sprite asset: {filename}')
+                  (asset_dir / Path(filename).name).write_bytes(archive.read(filename))
+          
+          (DEFAULT / 'custom-sprite-data.js').write_text(
+              'export default ' + json.dumps(sprite, ensure_ascii=False) + ';\n', encoding='utf-8'
           )
-
-          # Keep Scratch's original Stage, but replace its default sprite.
-          data_file = default / "project-data.js"
-          data = data_file.read_text(encoding="utf-8")
-
-          original_function = "const projectData = translateFunction => {"
-          if data.count(original_function) != 1:
-              raise RuntimeError("Unexpected project-data.js structure.")
-
-          data = data.replace(
-              original_function,
-              "const baseProjectData = translateFunction => {",
-              1
-          )
-
-          export_line = "export default projectData;"
-          if data.count(export_line) != 1:
-              raise RuntimeError("Could not locate project-data.js export.")
-
-          wrapper = """
-          import customSprite from './custom-sprite';
-
-          const projectData = translateFunction => {
-              const data = baseProjectData(translateFunction);
-              data.targets = data.targets.filter(target => target.isStage);
-              data.targets.push(customSprite);
-              return data;
-          };
-
-          export default projectData;
-          """
-
-          data = data.replace(export_line, wrapper.strip(), 1)
-          data_file.write_text(data, encoding="utf-8")
-
-          # Register all custom costume and sound assets with Scratch.
-          index_file = default / "index.js"
-          index = index_file.read_text(encoding="utf-8")
-
-          marker = "const defaultProject = translator =>"
-          if index.count(marker) != 1:
-              raise RuntimeError("Unexpected default-project index.js structure.")
-
-          imports = []
-          entries = []
-
-          for number, asset in enumerate(assets):
-              item = asset["item"]
-              filename = asset["filename"]
-              fmt = item.get("dataFormat", "").lower()
-              asset_id = item.get("assetId")
-
+          
+          # Keep Scratch's stage and replace its starter cat with Sprite1.
+          data_file = DEFAULT / 'project-data.js'
+          data = data_file.read_text(encoding='utf-8')
+          if "import customSprite from './custom-sprite-data';" not in data:
+              data = "import customSprite from './custom-sprite-data';\n" + data
+          if 'const project = ({' not in data:
+              if 'return ({' not in data:
+                  raise RuntimeError('Unexpected project-data.js: default project object not found')
+              data = data.replace('return ({', 'const project = ({', 1)
+              tail = '    });\n};'
+              if tail not in data:
+                  raise RuntimeError('Unexpected project-data.js: end of project object not found')
+              data = data.replace(tail,
+                  '    });\n'
+                  '    project.targets = project.targets.filter(target => target.isStage);\n'
+                  '    project.targets.push(customSprite);\n'
+                  '    return project;\n};', 1)
+          data_file.write_text(data, encoding='utf-8')
+          
+          # Register each exported costume and sound in the default project asset list.
+          index_file = DEFAULT / 'index.js'
+          index = index_file.read_text(encoding='utf-8')
+          imports, entries = [], []
+          for number, item in enumerate(items):
+              fmt = item.get('dataFormat', '').lower()
+              asset_id = item.get('assetId')
+              filename = Path(item['md5ext']).name
               if not asset_id:
-                  raise RuntimeError("A custom asset has no assetId.")
-
-              variable = f"customAsset{number}"
-              relative = f"./custom-sprite/{filename}"
-
-              if fmt == "svg":
-                  imports.append(
-                      f"import {variable} from '!raw-loader!{relative}?';"
-                  )
-                  asset_type = "ImageVector"
-                  asset_data = f"encoder.encode({variable})"
-                  output_format = "SVG"
-
-              elif fmt == "wav":
-                  imports.append(
-                      f"import {variable} from '!arraybuffer-loader!{relative}?';"
-                  )
-                  asset_type = "Sound"
-                  asset_data = f"new Uint8Array({variable})"
-                  output_format = "WAV"
-
+                  raise RuntimeError('A sprite asset has no assetId')
+              var = f'customAsset{number}'
+              rel = './custom-sprite/' + filename
+              if fmt == 'svg':
+                  imports.append(f"import {var} from '!raw-loader!{rel}?';")
+                  asset_type, expression, out_format = 'ImageVector', f'encoder.encode({var})', 'SVG'
+              elif fmt == 'wav':
+                  imports.append(f"import {var} from '!arraybuffer-loader!{rel}?';")
+                  asset_type, expression, out_format = 'Sound', f'new Uint8Array({var})', 'WAV'
               else:
-                  raise RuntimeError(
-                      f"Unsupported custom asset format: {fmt}"
-                  )
-
+                  raise RuntimeError(f'Unsupported sprite asset format: {fmt}')
               entries.append(
-                  "{ id: " + json.dumps(asset_id) +
-                  ", assetType: " + json.dumps(asset_type) +
-                  ", dataFormat: " + json.dumps(output_format) +
-                  ", data: " + asset_data + " }"
+                  '{ id: ' + json.dumps(asset_id) +
+                  ', assetType: ' + json.dumps(asset_type) +
+                  ', dataFormat: ' + json.dumps(out_format) +
+                  ', data: ' + expression + ' }'
               )
-
-          index = index.replace(
-              marker,
-              "\n".join(imports) + "\n\n" + marker,
-              1
-          )
-
-          # Insert before the final closing bracket of the asset array.
-          array_end = index.rfind("];")
-          if array_end == -1:
-              raise RuntimeError("Could not locate the default asset array.")
-
-          index = (
-              index[:array_end].rstrip()
-              + ",\n"
-              + ",\n".join(entries)
-              + "\n"
-              + index[array_end:]
-          )
-
-          index_file.write_text(index, encoding="utf-8")
-
-          # Remove Share and See Project Page buttons.
-          menu_file = root / "src/components/menu-bar/menu-bar.jsx"
-          menu = menu_file.read_text(encoding="utf-8")
-
-          menu, share_count = re.subn(
-              r"<ShareButton\b[\s\S]*?/>",
-              "<></>",
-              menu
-          )
-          menu, community_count = re.subn(
-              r"<CommunityButton\b[\s\S]*?/>",
-              "<></>",
-              menu
-          )
-
-          if share_count == 0:
-              raise RuntimeError("Could not find the Share button.")
-          if community_count == 0:
-              raise RuntimeError("Could not find the See Project Page button.")
-
-          menu_file.write_text(menu, encoding="utf-8")
-
-          # Hide Backpack without changing the editor's other panels.
-          gui_file = root / "src/components/gui/gui.jsx"
-          gui = gui_file.read_text(encoding="utf-8")
-
-          if "{backpackVisible ? (" not in gui:
-              raise RuntimeError("Could not find the Backpack display section.")
-
-          gui = gui.replace(
-              "{backpackVisible ? (",
-              "{false && backpackVisible ? (",
-              1
-          )
-          gui_file.write_text(gui, encoding="utf-8")
-
-          # Blue top bar and hidden account/user controls.
-          css_file = root / "src/components/menu-bar/menu-bar.css"
-
-          css = """
-          /* Custom blue Scratch top bar */
-          .menu-bar {
-              background-color: #1677d2 !important;
-          }
-
+          marker = 'const defaultProject = translator =>'
+          if marker not in index:
+              raise RuntimeError('Unexpected default-project index.js')
+          index = index.replace(marker, '\n'.join(imports) + '\n\n' + marker, 1)
+          end = index.rfind('];')
+          if end < 0:
+              raise RuntimeError('Could not locate end of default asset list in index.js')
+          index = index[:end].rstrip() + ',\n' + ',\n'.join(entries) + '\n' + index[end:]
+          index_file.write_text(index, encoding='utf-8')
+          
+          # 2) Load custom blocks and bridge extension events into the browser UI.
+          gui_file = ROOT / 'src/containers/gui.jsx'
+          gui = gui_file.read_text(encoding='utf-8')
+          anchor = '        setProjectIdMetadata(this.props.projectId);'
+          if 'custom-extension.js' not in gui:
+              if anchor not in gui:
+                  raise RuntimeError('Could not locate GUI initialization point')
+              gui = gui.replace(anchor, anchor + '''
+                  const customExtensionUrl = new URL('./custom-extension.js', window.location.href).toString();
+                  this.props.vm.extensionManager.loadExtensionURL(customExtensionUrl, {type: 'unsandboxed'}).catch(error => {
+                      console.error('Could not load KryptoLite blocks:', error);
+                  });
+                  this.props.vm.runtime.on('CUSTOM_ALERT', message => window.alert(String(message)));
+                  this.props.vm.runtime.on('CUSTOM_CHAOS', () => window.dispatchEvent(new Event('scratch-chaos')));''', 1)
+          gui_file.write_text(gui, encoding='utf-8')
+          
+          # Expose the live Blockly workspace to the modes controller.
+          blocks_file = ROOT / 'src/containers/blocks.jsx'
+          blocks = blocks_file.read_text(encoding='utf-8')
+          anchor = '        this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);'
+          if 'window.__scratchWorkspace = this.workspace' not in blocks:
+              if anchor not in blocks:
+                  raise RuntimeError('Could not locate Blockly workspace initialization')
+              blocks = blocks.replace(anchor, anchor + '''
+                  window.__scratchWorkspace = this.workspace;
+                  window.dispatchEvent(new Event('scratch-workspace-ready'));''', 1)
+          blocks_file.write_text(blocks, encoding='utf-8')
+          
+          # Add Modes inside the existing Settings dropdown.
+          settings_file = ROOT / 'src/components/menu-bar/settings-menu.jsx'
+          settings = settings_file.read_text(encoding='utf-8')
+          if 'scratch-open-modes' not in settings:
+              theme = '<ThemeMenu onRequestCloseSettings={onRequestClose} />'
+              if theme not in settings:
+                  raise RuntimeError('Could not locate Theme menu in Settings')
+              settings = settings.replace(theme, theme + '''
+                          <div
+                              role="menuitem"
+                              tabIndex="0"
+                              style={{padding: '8px 12px', cursor: 'pointer'}}
+                              onMouseUp={() => window.dispatchEvent(new Event('scratch-open-modes'))}
+                              onKeyDown={event => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                      window.dispatchEvent(new Event('scratch-open-modes'));
+                                  }
+                              }}
+                          >Modes</div>''', 1)
+          settings_file.write_text(settings, encoding='utf-8')
+          
+          # Blue top bar and hide the requested controls.
+          css_file = ROOT / 'src/components/menu-bar/menu-bar.css'
+          css_file.write_text(css_file.read_text(encoding='utf-8') + '''
+          
+          /* KryptoLite blue editor theme */
+          .menu-bar { background: #1677d2 !important; }
           .menu-bar .menu-bar-item.active,
-          .menu-bar .menu-bar-item.hoverable:hover {
-              background-color: #105da8 !important;
-          }
-
-          /* Keep save status, hide account and user controls */
-          .account-info-group > :not(:first-child) {
-              display: none !important;
-          }
-          """
-
-          with css_file.open("a", encoding="utf-8") as file:
-              file.write("\n" + css + "\n")
-
-          print("Custom sprite:", sprite.get("name", "Unnamed"))
-          print("Costumes:", len(sprite.get("costumes", [])))
-          print("Sounds:", len(sprite.get("sounds", [])))
-          print("Share and community buttons removed.")
-          print("Backpack hidden.")
-          print("Blue top bar applied.")
+          .menu-bar .menu-bar-item.hoverable:hover { background: #105da8 !important; }
+          .menu-bar [class*="share-button"],
+          .menu-bar [class*="community-button"],
+          .menu-bar [class*="account-nav"],
+          .menu-bar [class*="login-dropdown"],
+          .menu-bar [class*="user-avatar"] { display: none !important; }
+          ''', encoding='utf-8')
+          
+          gui_component = ROOT / 'src/components/gui/gui.jsx'
+          g = gui_component.read_text(encoding='utf-8')
+          if '{false && backpackVisible ? (' not in g:
+              g = g.replace('{backpackVisible ? (', '{false && backpackVisible ? (', 1)
+          gui_component.write_text(g, encoding='utf-8')
+          
+          # 3) Custom Scratch extension. Three alerts per loaded project.
+          (ROOT / 'custom-extension.js').write_text(r'''(function () {
+              'use strict';
+              class KryptoLiteBlocks {
+                  constructor () { this.alertUses = 0; this.runtime = Scratch.vm.runtime; this.runtime.on('PROJECT_LOADED', () => { this.alertUses = 0; }); }
+                  getInfo () {
+                      return {
+                          id: 'kryptoLite', name: 'KryptoLite', color1: '#2878d0', color2: '#1b5fa8', color3: '#12477e',
+                          blocks: [
+                              {opcode: 'alertMessage', blockType: Scratch.BlockType.COMMAND, text: 'alert [MESSAGE]',
+                                  arguments: {MESSAGE: {type: Scratch.ArgumentType.STRING, defaultValue: 'Hello!'}}},
+                              {opcode: 'endlessSuffering', blockType: Scratch.BlockType.COMMAND,
+                                  text: 'block of endless suffering and despair'}
+                          ]
+                      };
+                  }
+                  alertMessage (args, util) {
+                      const runtime = this.runtime;
+                      if (this.alertUses >= 3) {
+                          runtime.emit('CUSTOM_ALERT', 'This project has reached its limit of 3 alerts.');
+                          return;
+                      }
+                      this.alertUses += 1;
+                      runtime.emit('CUSTOM_ALERT', args.MESSAGE);
+                  }
+                  endlessSuffering () { this.runtime.emit('CUSTOM_CHAOS'); }
+              }
+              Scratch.extensions.register(new KryptoLiteBlocks());
+          })();
+          ''', encoding='utf-8')
+          
+          # 4) Modes panel, RNG unlocking, reversible Progress Detected, and chaos reset.
+          (ROOT / 'custom-modes.js').write_text(r'''(function () {
+              'use strict';
+              const KEY = 'kryptolite-scratch-modes-v1';
+              const state = {rng: false, progress: false, unlocked: []};
+              try { Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+              const save = () => localStorage.setItem(KEY, JSON.stringify(state));
+              const types = ['kryptoLite_alertMessage', 'kryptoLite_endlessSuffering'];
+              let deleting = false;
+              const getWorkspace = () => window.__scratchWorkspace || null;
+          
+              function toast (message) {
+                  const el = document.createElement('div');
+                  el.textContent = message;
+                  Object.assign(el.style, {position:'fixed',bottom:'18px',left:'50%',transform:'translateX(-50%)',zIndex:999999,
+                      background:'#202b3a',color:'#fff',padding:'10px 16px',borderRadius:'8px',font:'14px Arial',boxShadow:'0 4px 18px #0005'});
+                  document.body.appendChild(el);
+                  setTimeout(() => el.remove(), 3200);
+              }
+              function refreshLocks () {
+                  const ws = getWorkspace();
+                  if (!ws || !ws.getFlyout || !ws.getFlyout()) return;
+                  const flyout = ws.getFlyout().getWorkspace();
+                  if (!flyout) return;
+                  flyout.getAllBlocks(false).forEach(block => {
+                      if (types.includes(block.type) && block.setDisabled) {
+                          block.setDisabled(state.rng && !state.unlocked.includes(block.type));
+                      }
+                  });
+              }
+              function attachWorkspace () {
+                  const ws = getWorkspace();
+                  if (!ws || ws.__kryptoModesAttached) return;
+                  ws.__kryptoModesAttached = true;
+                  ws.addChangeListener(event => {
+                      if (!state.progress || deleting || !event || event.isUiEvent) return;
+                      if (!['move', 'change', 'create'].includes(event.type) || Math.random() > 0.012) return;
+                      const blocks = ws.getTopBlocks(false).filter(block => !block.isShadow && !block.isInFlyout);
+                      if (!blocks.length) return;
+                      deleting = true;
+                      try {
+                          blocks[Math.floor(Math.random() * blocks.length)].dispose(true);
+                          toast('Progress detected: a block vanished. Press Ctrl+Z to restore it.');
+                      } finally { setTimeout(() => { deleting = false; }, 0); }
+                  });
+                  refreshLocks();
+              }
+              function resetChaos () { document.body.classList.remove('krypto-chaos'); }
+              function openPanel () {
+                  const old = document.getElementById('krypto-modes-panel');
+                  if (old) { old.remove(); return; }
+                  const panel = document.createElement('section');
+                  panel.id = 'krypto-modes-panel';
+                  Object.assign(panel.style, {position:'fixed',top:'54px',right:'12px',width:'300px',zIndex:999998,
+                      background:'#fff',color:'#222',padding:'16px',borderRadius:'12px',boxShadow:'0 8px 32px #0005',font:'14px Arial'});
+                  panel.innerHTML = '<h3 style="margin:0 0 12px">Experimental Modes</h3>' +
+                      '<label style="display:flex;gap:8px;margin:12px 0"><input id="krng" type="checkbox"> RNG Mode</label>' +
+                      '<p style="color:#555">Roll to unlock the two custom blocks. Each roll unlocks one random block.</p>' +
+                      '<button id="kroll" style="padding:8px 12px">Roll to unlock</button><hr style="margin:14px 0">' +
+                      '<label style="display:flex;gap:8px;margin:12px 0"><input id="kprogress" type="checkbox"> Progress Detected</label>' +
+                      '<p style="color:#555">Randomly removes a top-level block. Ctrl+Z restores it.</p><hr style="margin:14px 0">' +
+                      '<button id="kreset" style="padding:8px 12px">Reset Chaos</button> ' +
+                      '<button id="kclose" style="padding:8px 12px">Close</button>';
+                  document.body.appendChild(panel);
+                  panel.querySelector('#krng').checked = state.rng;
+                  panel.querySelector('#kprogress').checked = state.progress;
+                  panel.querySelector('#krng').addEventListener('change', e => {
+                      state.rng = e.target.checked;
+                      state.unlocked = state.rng ? [] : types.slice();
+                      save(); refreshLocks();
+                  });
+                  panel.querySelector('#kprogress').addEventListener('change', e => { state.progress = e.target.checked; save(); });
+                  panel.querySelector('#kroll').addEventListener('click', () => {
+                      const locked = types.filter(type => !state.unlocked.includes(type));
+                      if (!locked.length) return toast('All custom blocks are unlocked.');
+                      const chosen = locked[Math.floor(Math.random() * locked.length)];
+                      state.unlocked.push(chosen); save(); refreshLocks();
+                      toast('Unlocked: ' + (chosen.endsWith('alertMessage') ? 'alert ( )' : 'block of endless suffering and despair'));
+                  });
+                  panel.querySelector('#kreset').addEventListener('click', resetChaos);
+                  panel.querySelector('#kclose').addEventListener('click', () => panel.remove());
+              }
+              window.addEventListener('scratch-open-modes', openPanel);
+              window.addEventListener('scratch-chaos', () => {
+                  document.body.classList.add('krypto-chaos');
+                  toast('ENDLESS SUFFERING AND DESPAIR — Reset Chaos or press Escape to restore the interface.');
+              });
+              document.addEventListener('scratch-workspace-ready', () => { attachWorkspace(); refreshLocks(); });
+              document.addEventListener('keydown', event => { if (event.key === 'Escape') resetChaos(); });
+              const observer = new MutationObserver(() => { attachWorkspace(); refreshLocks(); });
+              observer.observe(document.documentElement, {childList:true, subtree:true});
+              const style = document.createElement('style');
+              style.textContent = `
+                body.krypto-chaos .menu-bar { animation:krypto-wobble .22s infinite alternate !important; filter:hue-rotate(145deg) contrast(1.7) !important; }
+                body.krypto-chaos .blocklyWorkspace { animation:krypto-wobble .17s infinite alternate !important; filter:hue-rotate(220deg) saturate(3) !important; }
+                body.krypto-chaos .stage-wrapper { transform:rotate(1.5deg) scale(.97); filter:invert(.12) hue-rotate(80deg); }
+                @keyframes krypto-wobble { from { transform:translate(0,0) rotate(-.4deg); } to { transform:translate(3px,-2px) rotate(.5deg); } }
+              `;
+              document.head.appendChild(style);
+              window.addEventListener('load', () => { attachWorkspace(); refreshLocks(); });
+          })();
+          ''', encoding='utf-8')
+          
+          print('KryptoLite customizations installed.')
+          print('Default sprite:', sprite.get('name', 'Sprite1'))
+          print('Sprite assets:', len(items))
           PY
 
       - name: Build Scratch GUI
@@ -277,11 +348,20 @@ jobs:
 
       - name: Prepare website
         run: |
+          cp scratch-gui-src/custom-extension.js scratch-gui-src/build/custom-extension.js
+          cp scratch-gui-src/custom-modes.js scratch-gui-src/build/custom-modes.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scratch-gui-src/build/index.html')
+          html = p.read_text(encoding='utf-8')
+          if 'custom-modes.js' not in html:
+              html = html.replace('</body>', '<script src="./custom-modes.js"></script>\n</body>')
+          p.write_text(html, encoding='utf-8')
+          PY
           mkdir -p site/editor
           cp index.html site/index.html
           cp -R scratch-gui-src/build/. site/editor/
-          touch site/.nojekyll
-          touch site/editor/.nojekyll
+          touch site/.nojekyll site/editor/.nojekyll
 
       - name: Upload website
         uses: actions/upload-pages-artifact@v3
@@ -291,11 +371,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
