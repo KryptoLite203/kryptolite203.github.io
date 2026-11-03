@@ -41,29 +41,62 @@ jobs:
         working-directory: scratch-gui-src
         run: npm ci
 
-      -       - name: Remove Share, Backpack, and User buttons
+      - name: Remove Share, Backpack, and User buttons
         working-directory: scratch-gui-src
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
-          path = Path("src/components/menu-bar/menu-bar.jsx")
-          text = path.read_text(encoding="utf-8")
+          # Remove the Share button by giving it a dedicated CSS class.
+          menu_file = Path("src/components/menu-bar/menu-bar.jsx")
+          menu = menu_file.read_text(encoding="utf-8")
 
-          # Hide the entire right-side account button group,
-          # including Share-related account controls.
-          start = text.find('<div className={styles.accountInfoGroup}>')
-          if start == -1:
-              raise SystemExit("Could not find accountInfoGroup")
+          menu, share_count = re.subn(
+              r'(<ShareButton\s+className=)\{styles\.menuBarButton\}',
+              r'\1{classNames(styles.menuBarButton, styles.shareButton)}',
+              menu
+          )
 
-          end_marker = '\n</div>\n\n{aboutButton}'
-          end = text.find(end_marker, start)
+          if share_count == 0:
+              raise SystemExit("Could not find the Share button in menu-bar.jsx")
 
-          if end == -1:
-              raise SystemExit("Could not find end of accountInfoGroup")
+          menu_file.write_text(menu, encoding="utf-8")
 
-          text = text[:start] + '<div className={styles.accountInfoGroup} />' + text[end + len(end_marker) - len('{aboutButton}'):]
-          path.write_text(text, encoding="utf-8")
+          # Hide Share and the right-side account/profile area.
+          css_file = Path("src/components/menu-bar/menu-bar.css")
+          css = css_file.read_text(encoding="utf-8")
+
+          css += """
+
+          /* ScratchR customizations */
+          .shareButton {
+              display: none !important;
+          }
+
+          .accountInfoGroup {
+              display: none !important;
+          }
+          """
+
+          css_file.write_text(css, encoding="utf-8")
+
+          # Remove the Backpack component from the editor layout.
+          gui_file = Path("src/components/gui/gui.jsx")
+          gui = gui_file.read_text(encoding="utf-8")
+
+          old = "{backpackVisible ? ("
+          new = "{false && backpackVisible ? ("
+
+          if gui.count(old) != 1:
+              raise SystemExit("Could not find the Backpack visibility condition")
+
+          gui_file.write_text(
+              gui.replace(old, new, 1),
+              encoding="utf-8"
+          )
+
+          print("Share, Backpack, and account controls patched.")
           PY
 
       - name: Build Scratch GUI
