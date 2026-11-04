@@ -220,6 +220,40 @@ jobs:
           [class*="menu-bar_menu-bar"] [class*="account-nav"],
           [class*="menu-bar_menu-bar"] [class*="login-dropdown"],
           [class*="menu-bar_menu-bar"] [class*="user-avatar"] { display: none !important; }
+
+          /* Remove the remaining Scratch-purple UI accents throughout the editor. */
+          :root {
+            --ui-primary: #1677d2;
+            --ui-primary-dark: #105da8;
+            --ui-primary-light: #dceeff;
+            --looks-secondary: #1677d2;
+          }
+          [class*="gui_tab"], [class*="tab_isSelected"],
+          [class*="gui_tabSelected"], [class*="tab-active"],
+          [class*="button_primary"], [class*="button_primary"]:hover,
+          [class*="modal_header"], [class*="modal_header-item"],
+          [class*="monitor_label"], [class*="monitor_value"],
+          [class*="loader_animation"], [class*="loader_progress"],
+          [class*="stage-header_stage-header"],
+          [class*="stage-header_stage-menu"],
+          [class*="stage-header_stage-button"] {
+            --looks-secondary: #1677d2;
+          }
+          [class*="button_primary"], [class*="gui_tabSelected"],
+          [class*="tab_isSelected"], [class*="stage-header_stage-button"] {
+            background-color: #1677d2 !important;
+            border-color: #105da8 !important;
+          }
+          [class*="button_primary"]:hover, [class*="gui_tabSelected"]:hover {
+            background-color: #105da8 !important;
+          }
+          [class*="input_input"]:focus, input:focus, textarea:focus, select:focus {
+            outline-color: #1677d2 !important;
+            border-color: #1677d2 !important;
+            box-shadow: 0 0 0 1px #1677d2 !important;
+          }
+          a, [class*="link_link"] { color: #1268b3; }
+          [class*="blocklyToolboxCategory[aria-selected="true"]"] { outline-color: #1677d2 !important; }
           ''', encoding='utf-8')
 
           gui_component = ROOT / 'src/components/gui/gui.jsx'
@@ -322,50 +356,80 @@ jobs:
                   const button = document.createElement('button');
                   button.id = 'krypto-modes-button';
                   button.type = 'button';
+                  button.className = 'krypto-language-style-menu-item';
+                  button.setAttribute('aria-haspopup', 'menu');
+                  button.setAttribute('aria-expanded', 'false');
                   button.textContent = 'Modes ▾';
                   Object.assign(button.style, {alignSelf:'stretch',border:0,background:'transparent',color:'#fff',
                       padding:'0 13px',font:'bold 13px Arial',cursor:'pointer'});
-                  button.addEventListener('mouseenter', () => { button.style.background = '#105da8'; });
-                  button.addEventListener('mouseleave', () => { button.style.background = 'transparent'; });
-                  button.addEventListener('click', openPanel);
+                  button.addEventListener('mouseenter', () => { if (!document.getElementById('krypto-modes-dropdown')) button.style.background = '#105da8'; });
+                  button.addEventListener('mouseleave', () => { if (!document.getElementById('krypto-modes-dropdown')) button.style.background = 'transparent'; });
+                  button.addEventListener('click', event => { event.stopPropagation(); openPanel(); });
                   bar.appendChild(button);
               }
               function resetChaos() { document.body.classList.remove('krypto-chaos'); }
               function openPanel() {
-                  const old = document.getElementById('krypto-modes-panel');
-                  if (old) { old.remove(); return; }
-                  const panel = document.createElement('section');
-                  panel.id = 'krypto-modes-panel';
-                  Object.assign(panel.style, {position:'fixed',top:'54px',right:'12px',width:'300px',zIndex:999998,
-                      background:'#fff',color:'#222',padding:'16px',borderRadius:'12px',boxShadow:'0 8px 32px #0005',font:'14px Arial'});
-                  panel.innerHTML = '<h3 style="margin:0 0 12px">Experimental Modes</h3>' +
-                      '<label style="display:flex;gap:8px;margin:12px 0"><input id="krng" type="checkbox"> RNG Mode</label>' +
-                      '<p style="color:#555">Roll to unlock the three Zany Blocks. Each roll unlocks one random block.</p>' +
-                      '<button id="kroll" style="padding:8px 12px">Roll to unlock</button><hr style="margin:14px 0">' +
-                      '<label style="display:flex;gap:8px;margin:12px 0"><input id="kprogress" type="checkbox"> Progress Detected</label>' +
-                      '<p style="color:#555">Randomly removes a top-level block. Revert All restores blocks removed by this mode.</p><hr style="margin:14px 0">' +
-                      '<button id="kreset" style="padding:8px 12px">Reset Chaos</button> ' +
-                      '<button id="krevert" style="padding:8px 12px">Revert All</button> ' +
-                      '<button id="kclose" style="padding:8px 12px">Close</button>';
-                  document.body.appendChild(panel);
-                  panel.querySelector('#krng').checked = state.rng;
-                  panel.querySelector('#kprogress').checked = state.progress;
-                  panel.querySelector('#krng').addEventListener('change', e => {
+                  const old = document.getElementById('krypto-modes-dropdown');
+                  const trigger = document.getElementById('krypto-modes-button');
+                  if (old) {
+                      old.remove();
+                      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+                      return;
+                  }
+                  if (!trigger) return;
+                  const menu = document.createElement('div');
+                  menu.id = 'krypto-modes-dropdown';
+                  menu.setAttribute('role', 'menu');
+                  Object.assign(menu.style, {position:'fixed',top:'48px',left:'0',minWidth:'270px',zIndex:999998,
+                      background:'#fff',color:'#575e75',padding:'8px 0',borderRadius:'0 0 8px 8px',
+                      boxShadow:'0 4px 12px #0003',font:'13px Arial',border:'1px solid #d9e2ec'});
+                  const rect = trigger.getBoundingClientRect();
+                  menu.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - 286)) + 'px';
+                  menu.style.top = rect.bottom + 'px';
+                  menu.innerHTML = `
+                    <div style="padding:7px 14px 9px;font-weight:bold;color:#1677d2;border-bottom:1px solid #e5e5e5">Experimental Modes</div>
+                    <label role="menuitemcheckbox" style="display:flex;align-items:center;gap:9px;padding:10px 14px;cursor:pointer">
+                      <input id="krng" type="checkbox"> <span><b>RNG Mode</b><small style="display:block;color:#888;margin-top:3px">Roll to unlock the Zany Blocks</small></span>
+                    </label>
+                    <button id="kroll" type="button" style="display:block;width:calc(100% - 28px);margin:0 14px 9px;padding:8px 10px;text-align:left;border:1px solid #c9d8e8;border-radius:5px;background:#f4f9ff;color:#245b8f;cursor:pointer">🎲 Roll to unlock a block</button>
+                    <div style="height:1px;background:#e5e5e5;margin:3px 0"></div>
+                    <label role="menuitemcheckbox" style="display:flex;align-items:center;gap:9px;padding:10px 14px;cursor:pointer">
+                      <input id="kprogress" type="checkbox"> <span><b>Progress Detected</b><small style="display:block;color:#888;margin-top:3px">Randomly removes blocks; recovery is available</small></span>
+                    </label>
+                    <div style="height:1px;background:#e5e5e5;margin:3px 0"></div>
+                    <button id="krevert" type="button" style="display:block;width:100%;padding:10px 14px;text-align:left;border:0;background:#fff;color:#575e75;cursor:pointer">↶ Revert All</button>
+                    <button id="kreset" type="button" style="display:block;width:100%;padding:10px 14px;text-align:left;border:0;background:#fff;color:#575e75;cursor:pointer">Reset Chaos</button>`;
+                  document.body.appendChild(menu);
+                  trigger.setAttribute('aria-expanded', 'true');
+                  menu.querySelector('#krng').checked = state.rng;
+                  menu.querySelector('#kprogress').checked = state.progress;
+                  menu.querySelector('#krng').addEventListener('change', e => {
                       state.rng = e.target.checked;
                       state.unlocked = state.rng ? [] : types.slice();
                       save(); refreshLocks();
                   });
-                  panel.querySelector('#kprogress').addEventListener('change', e => { state.progress = e.target.checked; save(); });
-                  panel.querySelector('#kroll').addEventListener('click', () => {
+                  menu.querySelector('#kprogress').addEventListener('change', e => { state.progress = e.target.checked; save(); });
+                  menu.querySelector('#kroll').addEventListener('click', () => {
                       const locked = types.filter(type => !state.unlocked.includes(type));
                       if (!locked.length) return toast('All Zany Blocks are unlocked.');
                       const chosen = locked[Math.floor(Math.random() * locked.length)];
                       state.unlocked.push(chosen); save(); refreshLocks();
                       toast('Unlocked: ' + chosen.replace('kryptoLite_', ''));
                   });
-                  panel.querySelector('#kreset').addEventListener('click', resetChaos);
-                  panel.querySelector('#krevert').addEventListener('click', revertAll);
-                  panel.querySelector('#kclose').addEventListener('click', () => panel.remove());
+                  menu.querySelector('#kreset').addEventListener('click', resetChaos);
+                  menu.querySelector('#krevert').addEventListener('click', revertAll);
+                  menu.querySelectorAll('button').forEach(item => {
+                      item.addEventListener('mouseenter', () => item.style.background = '#edf6ff');
+                      item.addEventListener('mouseleave', () => item.style.background = '#fff');
+                  });
+                  const close = event => {
+                      if (!menu.contains(event.target) && event.target !== trigger) {
+                          menu.remove(); trigger.setAttribute('aria-expanded', 'false');
+                          document.removeEventListener('pointerdown', close, true);
+                      }
+                  };
+                  setTimeout(() => document.addEventListener('pointerdown', close, true), 0);
+                  menu.addEventListener('click', event => event.stopPropagation());
               }
               window.addEventListener('scratch-open-modes', openPanel);
               window.addEventListener('scratch-chaos', () => {
