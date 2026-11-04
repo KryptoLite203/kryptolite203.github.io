@@ -133,29 +133,67 @@ jobs:
           index = index[:end].rstrip() + ',\n' + ',\n'.join(entries) + '\n' + index[end:]
           index_file.write_text(index, encoding='utf-8')
           
-          # 2) Load custom blocks and bridge extension events into the browser UI.
+          # 2) Register the custom extension directly with the page's VM.
+          # This avoids the worker sandbox, which cannot access window.alert or the GUI.
           gui_file = ROOT / 'src/containers/gui.jsx'
           gui = gui_file.read_text(encoding='utf-8')
           anchor = '        setProjectIdMetadata(this.props.projectId);'
-          if 'custom-extension.js' not in gui:
+          if 'KryptoLite internal extension registration' not in gui:
               if anchor not in gui:
                   raise RuntimeError('Could not locate GUI initialization point')
-              gui = gui.replace(anchor, anchor + '''
-                  const customExtensionUrl = new URL('./custom-extension.js', window.location.href).toString();
-                  window.__kryptoVM = this.props.vm;
-                  this.props.vm.runtime.on('KRYPTOLITE_UI_ACTION', payload => {
-                      window.dispatchEvent(new CustomEvent('krypto-zany-action', {detail: payload || {}}));
-                  });
-                  this.props.vm.extensionManager.loadExtensionURL(customExtensionUrl).then(() => {
-                      console.info('Zany Blocks extension loaded.');
-                      return this.props.vm.extensionManager.refreshBlocks();
-                  }).catch(error => {
-                      console.error('Could not load KryptoLite blocks:', error);
-                      window.alert('KryptoLite blocks could not load. Check the browser console for details.');
-                  });''', 1)
+              gui = gui.replace(anchor, anchor + r'''
+                  // KryptoLite internal extension registration
+                  try {
+                      const manager = this.props.vm.extensionManager;
+                      if (!manager.isExtensionLoaded('kryptoLite')) {
+                          class KryptoLiteBlocks {
+                              constructor(runtime) {
+                                  this.runtime = runtime;
+                                  this.alertUses = 0;
+                                  this.runtime.on('PROJECT_LOADED', () => { this.alertUses = 0; });
+                              }
+                              getInfo() {
+                                  return {
+                                      id: 'kryptoLite',
+                                      name: 'Zany Blocks',
+                                      color1: '#8B0000',
+                                      color2: '#650000',
+                                      color3: '#420000',
+                                      blocks: [
+                                          {opcode: 'alertMessage', blockType: 'command', text: 'alert [MESSAGE]',
+                                              arguments: {MESSAGE: {type: 'string', defaultValue: 'Hello!'}}},
+                                          {opcode: 'endlessSuffering', blockType: 'command',
+                                              text: 'block of endless suffering and despair'},
+                                          {opcode: 'revertAll', blockType: 'command', text: 'Revert All'}
+                                      ]
+                                  };
+                              }
+                              alertMessage(args) {
+                                  if (this.alertUses >= 3) {
+                                      window.alert('This project has reached its limit of 3 alerts.');
+                                      return;
+                                  }
+                                  this.alertUses += 1;
+                                  window.alert(String(args.MESSAGE || ''));
+                              }
+                              endlessSuffering() {
+                                  window.dispatchEvent(new Event('scratch-chaos'));
+                              }
+                              revertAll() {
+                                  window.dispatchEvent(new Event('krypto-revert-all'));
+                              }
+                          }
+                          const serviceName = manager._registerInternalExtension(new KryptoLiteBlocks(this.props.vm.runtime));
+                          manager._loadedExtensions.set('kryptoLite', serviceName);
+                          manager.refreshBlocks().catch(error => console.error('Could not refresh Zany Blocks:', error));
+                      }
+                  } catch (error) {
+                      console.error('Could not register Zany Blocks:', error);
+                  }
+              ''', 1)
           gui_file.write_text(gui, encoding='utf-8')
-          
-          # Expose the live Blockly workspace to the modes controller.
+
+          # Expose the workspace and the exact Blockly implementation for recovery.
           blocks_file = ROOT / 'src/containers/blocks.jsx'
           blocks = blocks_file.read_text(encoding='utf-8')
           anchor = '        this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);'
@@ -167,102 +205,51 @@ jobs:
                   window.__scratchBlockly = this.ScratchBlocks;
                   window.dispatchEvent(new Event('scratch-workspace-ready'));''', 1)
           blocks_file.write_text(blocks, encoding='utf-8')
-          
-          # Modes is added by custom-modes.js as a top-bar dropdown, matching
-          # Scratch's Language menu. Do not add a second entry in Settings.
 
-          # Blue top bar and hide the requested controls.
+          # The Modes dropdown is added directly to the editor top bar by custom-modes.js.
+
+          # Blue top bar and hide requested controls.
           css_file = ROOT / 'src/components/menu-bar/menu-bar.css'
           css_file.write_text(css_file.read_text(encoding='utf-8') + '''
-          
+
           /* KryptoLite blue editor theme */
-          .menu-bar { background: #1677d2 !important; }
-          .menu-bar .menu-bar-item.active,
-          .menu-bar .menu-bar-item.hoverable:hover { background: #105da8 !important; }
-          .menu-bar [class*="share-button"],
-          .menu-bar [class*="community-button"],
-          .menu-bar [class*="account-nav"],
-          .menu-bar [class*="login-dropdown"],
-          .menu-bar [class*="user-avatar"] { display: none !important; }
+          [class*="menu-bar_menu-bar"] { background: #1677d2 !important; }
+          [class*="menu-bar_menu-bar"] [class*="menu-bar-item"]:hover { background: #105da8 !important; }
+          [class*="menu-bar_menu-bar"] [class*="share-button"],
+          [class*="menu-bar_menu-bar"] [class*="community-button"],
+          [class*="menu-bar_menu-bar"] [class*="account-nav"],
+          [class*="menu-bar_menu-bar"] [class*="login-dropdown"],
+          [class*="menu-bar_menu-bar"] [class*="user-avatar"] { display: none !important; }
           ''', encoding='utf-8')
-          
+
           gui_component = ROOT / 'src/components/gui/gui.jsx'
           g = gui_component.read_text(encoding='utf-8')
           if '{false && backpackVisible ? (' not in g:
               g = g.replace('{backpackVisible ? (', '{false && backpackVisible ? (', 1)
           gui_component.write_text(g, encoding='utf-8')
-          
-          # 3) Custom Scratch extension. Three alert calls per loaded project.
+
+          # 3) Custom extension source is retained as documentation/fallback;
+          # actual registration is performed in gui.jsx with the live VM runtime.
           (ROOT / 'custom-extension.js').write_text(r'''(function () {
               'use strict';
-              class ZanyBlocks {
-                  constructor (runtime) { this.runtime = runtime; this.alertUses = 0; }
-                  getInfo () {
-                      return {
-                          id: 'kryptoLite',
-                          name: 'Zany Blocks',
-                          color1: '#8B0000',
-                          color2: '#650000',
-                          color3: '#430000',
-                          blocks: [
-                              {opcode: 'alertMessage', blockType: Scratch.BlockType.COMMAND,
-                                  text: 'alert [MESSAGE]',
-                                  arguments: {MESSAGE: {type: Scratch.ArgumentType.STRING, defaultValue: 'Hello!'}}},
-                              {opcode: 'endlessSuffering', blockType: Scratch.BlockType.COMMAND,
-                                  text: 'block of endless suffering and despair'},
-                              {opcode: 'revertAll', blockType: Scratch.BlockType.COMMAND,
-                                  text: 'Revert All'}
-                          ]
-                      };
-                  }
-                  alertMessage (args) {
-                      if (this.alertUses >= 3) {
-                          this.runtime.emit('KRYPTOLITE_UI_ACTION', {action: 'alert', message: 'This project has already used all 3 alerts.'});
-                          return;
-                      }
-                      this.alertUses += 1;
-                      this.runtime.emit('KRYPTOLITE_UI_ACTION', {action: 'alert', message: String(args.MESSAGE || '')});
-                  }
-                  endlessSuffering () {
-                      this.runtime.emit('KRYPTOLITE_UI_ACTION', {action: 'chaos'});
-                  }
-                  revertAll () {
-                      this.runtime.emit('KRYPTOLITE_UI_ACTION', {action: 'revert'});
-                  }
-              }
-              Scratch.extensions.register(new ZanyBlocks());
+              // Registered internally by the GUI so it can safely access the page.
           })();
           ''', encoding='utf-8')
-          
+
           # 4) Modes panel, RNG unlocking, reversible Progress Detected, and chaos reset.
           (ROOT / 'custom-modes.js').write_text(r'''(function () {
               'use strict';
-              const KEY = 'kryptolite-scratch-modes-v1';
+              const KEY = 'kryptolite-scratch-modes-v2';
               const state = {rng: false, progress: false, unlocked: []};
               try { Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
               const save = () => localStorage.setItem(KEY, JSON.stringify(state));
               const types = ['kryptoLite_alertMessage', 'kryptoLite_endlessSuffering', 'kryptoLite_revertAll'];
+              const deleted = [];
               let deleting = false;
-              const deletedBlocks = [];
               const getWorkspace = () => window.__scratchWorkspace || null;
-              function revertAll () {
-                  const ws = getWorkspace();
-                  const Blockly = window.__scratchBlockly;
-                  if (ws && Blockly && Blockly.Xml && Blockly.Xml.domToWorkspace) {
-                      while (deletedBlocks.length) {
-                          const saved = deletedBlocks.pop();
-                          try {
-                              const restored = Blockly.Xml.domToWorkspace(saved.xml, ws);
-                              const block = Array.isArray(restored) ? restored[0] : restored;
-                              if (block && saved.xy && block.moveBy) block.moveBy(saved.xy.x, saved.xy.y);
-                          } catch (error) { console.warn('Could not restore a removed block:', error); }
-                      }
-                  }
-                  resetChaos();
-                  toast('Revert All: restored removed blocks and reset the interface.');
-              }
-          
-              function toast (message) {
+              const getBlockly = () => window.__scratchBlockly || null;
+
+              function toast(message) {
                   const el = document.createElement('div');
                   el.textContent = message;
                   Object.assign(el.style, {position:'fixed',bottom:'18px',left:'50%',transform:'translateX(-50%)',zIndex:999999,
@@ -270,7 +257,7 @@ jobs:
                   document.body.appendChild(el);
                   setTimeout(() => el.remove(), 3200);
               }
-              function refreshLocks () {
+              function refreshLocks() {
                   const ws = getWorkspace();
                   if (!ws || !ws.getFlyout || !ws.getFlyout()) return;
                   const flyout = ws.getFlyout().getWorkspace();
@@ -281,7 +268,7 @@ jobs:
                       }
                   });
               }
-              function attachWorkspace () {
+              function attachWorkspace() {
                   const ws = getWorkspace();
                   if (!ws || ws.__kryptoModesAttached) return;
                   ws.__kryptoModesAttached = true;
@@ -290,56 +277,75 @@ jobs:
                       if (!['move', 'change', 'create'].includes(event.type) || Math.random() > 0.012) return;
                       const blocks = ws.getTopBlocks(false).filter(block => !block.isShadow && !block.isInFlyout);
                       if (!blocks.length) return;
-                      deleting = true;
+                      const Blockly = getBlockly();
+                      if (!Blockly || !Blockly.Xml) return;
+                      const block = blocks[Math.floor(Math.random() * blocks.length)];
                       try {
-                          const chosen = blocks[Math.floor(Math.random() * blocks.length)];
-                          const Blockly = window.__scratchBlockly;
-                          if (Blockly && Blockly.Xml && Blockly.Xml.blockToDom) {
-                              const xy = chosen.getRelativeToSurfaceXY ? chosen.getRelativeToSurfaceXY() : {x: 0, y: 0};
-                              deletedBlocks.push({xml: Blockly.Xml.blockToDom(chosen), xy: {x: xy.x, y: xy.y}});
-                          }
-                          chosen.dispose(true);
-                          toast('Progress detected: a block vanished. Use Revert All to restore it.');
+                          const dom = Blockly.Xml.blockToDom(block);
+                          const xy = block.getRelativeToSurfaceXY();
+                          dom.setAttribute('x', xy.x);
+                          dom.setAttribute('y', xy.y);
+                          deleted.push(Blockly.Xml.domToText(dom));
+                          deleting = true;
+                          block.dispose(true);
+                          toast('Progress detected: a block vanished. Use Revert All to restore deleted blocks.');
+                      } catch (error) {
+                          console.error('Could not preserve deleted block:', error);
                       } finally { setTimeout(() => { deleting = false; }, 0); }
                   });
                   refreshLocks();
               }
-              function resetChaos () { document.body.classList.remove('krypto-chaos'); }
-              function createModesMenu () {
-                  const bar = document.querySelector('.menu-bar');
-                  if (!bar || document.getElementById('krypto-modes-menu')) return;
-                  const wrap = document.createElement('div');
-                  wrap.id = 'krypto-modes-menu';
-                  wrap.className = 'krypto-modes-menu';
+              function revertAll() {
+                  const ws = getWorkspace();
+                  const Blockly = getBlockly();
+                  if (!ws || !Blockly || !Blockly.Xml) return toast('Workspace is not ready yet.');
+                  let restored = 0;
+                  deleting = true;
+                  try {
+                      while (deleted.length) {
+                          const saved = deleted.pop();
+                          const dom = Blockly.Xml.textToDom(saved);
+                          Blockly.Xml.domToBlock(dom, ws);
+                          restored++;
+                      }
+                  } catch (error) {
+                      console.error('Revert All could not restore a block:', error);
+                      toast('Some blocks could not be restored. Check the browser console.');
+                  } finally {
+                      setTimeout(() => { deleting = false; }, 0);
+                  }
+                  toast(restored ? 'Reverted ' + restored + ' deleted block(s).' : 'There are no deleted blocks to restore.');
+              }
+              function addModesButton() {
+                  const bar = document.querySelector('[class*="menu-bar_menu-bar"]') || document.querySelector('[class*="menu-bar"]');
+                  if (!bar || document.getElementById('krypto-modes-button')) return;
                   const button = document.createElement('button');
+                  button.id = 'krypto-modes-button';
                   button.type = 'button';
                   button.textContent = 'Modes ▾';
-                  button.setAttribute('aria-haspopup', 'true');
-                  button.setAttribute('aria-expanded', 'false');
-                  button.addEventListener('click', () => {
-                      const panel = document.getElementById('krypto-modes-panel');
-                      if (panel) { panel.remove(); button.setAttribute('aria-expanded', 'false'); }
-                      else { openPanel(); button.setAttribute('aria-expanded', 'true'); }
-                  });
-                  wrap.appendChild(button);
-                  bar.appendChild(wrap);
+                  Object.assign(button.style, {alignSelf:'stretch',border:0,background:'transparent',color:'#fff',
+                      padding:'0 13px',font:'bold 13px Arial',cursor:'pointer'});
+                  button.addEventListener('mouseenter', () => { button.style.background = '#105da8'; });
+                  button.addEventListener('mouseleave', () => { button.style.background = 'transparent'; });
+                  button.addEventListener('click', openPanel);
+                  bar.appendChild(button);
               }
-              function openPanel () {
+              function resetChaos() { document.body.classList.remove('krypto-chaos'); }
+              function openPanel() {
                   const old = document.getElementById('krypto-modes-panel');
                   if (old) { old.remove(); return; }
                   const panel = document.createElement('section');
                   panel.id = 'krypto-modes-panel';
-                  const menu = document.getElementById('krypto-modes-menu');
-                  const rect = menu ? menu.getBoundingClientRect() : {left: window.innerWidth - 320, bottom: 48};
-                  Object.assign(panel.style, {position:'fixed',top:(rect.bottom + 4) + 'px',left:Math.max(8, Math.min(rect.left, window.innerWidth - 316)) + 'px',width:'300px',zIndex:999998,
-                      background:'#fff',color:'#222',padding:'16px',border:'1px solid #b5b5b5',borderRadius:'4px',boxShadow:'0 4px 12px #0003',font:'14px Arial'});
+                  Object.assign(panel.style, {position:'fixed',top:'54px',right:'12px',width:'300px',zIndex:999998,
+                      background:'#fff',color:'#222',padding:'16px',borderRadius:'12px',boxShadow:'0 8px 32px #0005',font:'14px Arial'});
                   panel.innerHTML = '<h3 style="margin:0 0 12px">Experimental Modes</h3>' +
                       '<label style="display:flex;gap:8px;margin:12px 0"><input id="krng" type="checkbox"> RNG Mode</label>' +
-                      '<p style="color:#555">Roll to unlock the Zany Blocks commands. Each roll unlocks one random block.</p>' +
+                      '<p style="color:#555">Roll to unlock the three Zany Blocks. Each roll unlocks one random block.</p>' +
                       '<button id="kroll" style="padding:8px 12px">Roll to unlock</button><hr style="margin:14px 0">' +
                       '<label style="display:flex;gap:8px;margin:12px 0"><input id="kprogress" type="checkbox"> Progress Detected</label>' +
-                      '<p style="color:#555">Randomly removes a top-level block. The Revert All block restores removed blocks.</p><hr style="margin:14px 0">' +
+                      '<p style="color:#555">Randomly removes a top-level block. Revert All restores blocks removed by this mode.</p><hr style="margin:14px 0">' +
                       '<button id="kreset" style="padding:8px 12px">Reset Chaos</button> ' +
+                      '<button id="krevert" style="padding:8px 12px">Revert All</button> ' +
                       '<button id="kclose" style="padding:8px 12px">Close</button>';
                   document.body.appendChild(panel);
                   panel.querySelector('#krng').checked = state.rng;
@@ -352,61 +358,38 @@ jobs:
                   panel.querySelector('#kprogress').addEventListener('change', e => { state.progress = e.target.checked; save(); });
                   panel.querySelector('#kroll').addEventListener('click', () => {
                       const locked = types.filter(type => !state.unlocked.includes(type));
-                      if (!locked.length) return toast('All custom blocks are unlocked.');
+                      if (!locked.length) return toast('All Zany Blocks are unlocked.');
                       const chosen = locked[Math.floor(Math.random() * locked.length)];
                       state.unlocked.push(chosen); save(); refreshLocks();
-                      toast('Unlocked: ' + (chosen.endsWith('alertMessage') ? 'alert ( )' : (chosen.endsWith('endlessSuffering') ? 'block of endless suffering and despair' : 'Revert All')));
+                      toast('Unlocked: ' + chosen.replace('kryptoLite_', ''));
                   });
                   panel.querySelector('#kreset').addEventListener('click', resetChaos);
-                  panel.querySelector('#kclose').addEventListener('click', () => { panel.remove(); const b = document.querySelector('#krypto-modes-menu button'); if (b) b.setAttribute('aria-expanded', 'false'); });
+                  panel.querySelector('#krevert').addEventListener('click', revertAll);
+                  panel.querySelector('#kclose').addEventListener('click', () => panel.remove());
               }
               window.addEventListener('scratch-open-modes', openPanel);
-              const menuObserver = new MutationObserver(createModesMenu);
-              menuObserver.observe(document.documentElement, {childList:true, subtree:true});
-              document.addEventListener('DOMContentLoaded', createModesMenu);
-              window.addEventListener('load', createModesMenu);
               window.addEventListener('scratch-chaos', () => {
                   document.body.classList.add('krypto-chaos');
-                  toast('ENDLESS SUFFERING AND DESPAIR — use Revert All or press Escape to restore the interface.');
+                  toast('ENDLESS SUFFERING AND DESPAIR — Reset Chaos or press Escape to restore the interface.');
               });
-              window.addEventListener('krypto-zany-action', event => {
-                  const detail = event.detail || {};
-                  if (detail.action === 'alert') window.alert(String(detail.message || ''));
-                  if (detail.action === 'chaos') {
-                      document.body.classList.add('krypto-chaos');
-                      toast('ENDLESS SUFFERING AND DESPAIR — use Revert All or press Escape to restore the interface.');
-                  }
-                  if (detail.action === 'revert') revertAll();
-              });
-              document.addEventListener('scratch-workspace-ready', () => { attachWorkspace(); refreshLocks(); });
-              document.addEventListener('keydown', event => { if (event.key === 'Escape') { resetChaos(); const panel = document.getElementById('krypto-modes-panel'); if (panel) panel.remove(); const b = document.querySelector('#krypto-modes-menu button'); if (b) b.setAttribute('aria-expanded', 'false'); } });
-              document.addEventListener('click', event => {
-                  const panel = document.getElementById('krypto-modes-panel');
-                  const menu = document.getElementById('krypto-modes-menu');
-                  if (panel && !panel.contains(event.target) && menu && !menu.contains(event.target)) {
-                      panel.remove();
-                      const b = menu.querySelector('button');
-                      if (b) b.setAttribute('aria-expanded', 'false');
-                  }
-              });
-              const observer = new MutationObserver(() => { attachWorkspace(); refreshLocks(); });
+              window.addEventListener('krypto-revert-all', revertAll);
+              window.addEventListener('scratch-workspace-ready', () => { attachWorkspace(); refreshLocks(); });
+              document.addEventListener('keydown', event => { if (event.key === 'Escape') resetChaos(); });
+              const observer = new MutationObserver(() => { attachWorkspace(); refreshLocks(); addModesButton(); });
               observer.observe(document.documentElement, {childList:true, subtree:true});
+              addModesButton();
               const style = document.createElement('style');
               style.textContent = `
-                .krypto-modes-menu { display:flex; align-items:stretch; height:100%; margin-left:4px; }
-                .krypto-modes-menu button { height:100%; border:0; border-radius:0; padding:0 12px; background:transparent; color:#fff; font:600 13px Arial,sans-serif; cursor:pointer; }
-                .krypto-modes-menu button:hover, .krypto-modes-menu button:focus-visible { background:rgba(0,0,0,.16); outline:none; }
-                #krypto-modes-panel button { cursor:pointer; border:1px solid #aaa; border-radius:3px; background:#f7f7f7; }
                 body.krypto-chaos .menu-bar { animation:krypto-wobble .22s infinite alternate !important; filter:hue-rotate(145deg) contrast(1.7) !important; }
                 body.krypto-chaos .blocklyWorkspace { animation:krypto-wobble .17s infinite alternate !important; filter:hue-rotate(220deg) saturate(3) !important; }
                 body.krypto-chaos .stage-wrapper { transform:rotate(1.5deg) scale(.97); filter:invert(.12) hue-rotate(80deg); }
                 @keyframes krypto-wobble { from { transform:translate(0,0) rotate(-.4deg); } to { transform:translate(3px,-2px) rotate(.5deg); } }
               `;
               document.head.appendChild(style);
-              window.addEventListener('load', () => { attachWorkspace(); refreshLocks(); });
+              window.addEventListener('load', () => { attachWorkspace(); refreshLocks(); addModesButton(); });
           })();
           ''', encoding='utf-8')
-          
+
           print('KryptoLite customizations installed.')
           print('Default sprite:', sprite.get('name', 'Sprite1'))
           print('Sprite assets:', len(items))
@@ -424,12 +407,23 @@ jobs:
           from pathlib import Path
           p = Path('scratch-gui-src/build/index.html')
           html = p.read_text(encoding='utf-8')
+          import re
+          html = re.sub(r'<title>.*?</title>', '<title>blfroseozm: client</title>', html, count=1, flags=re.IGNORECASE | re.DOTALL)
           if 'custom-modes.js' not in html:
               html = html.replace('</body>', '<script src="./custom-modes.js"></script>\n</body>')
           p.write_text(html, encoding='utf-8')
           PY
           mkdir -p site/editor
           cp index.html site/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          page = Path('site/index.html')
+          html = page.read_text(encoding='utf-8')
+          slogan = 'Imagine, Create, wait whats that'
+          if slogan not in html:
+              html = html.replace('</body>', '<p class=\"mod-slogan\">' + slogan + '</p>\n</body>')
+          page.write_text(html, encoding='utf-8')
+          PY
           cp -R scratch-gui-src/build/. site/editor/
           touch site/.nojekyll site/editor/.nojekyll
 
