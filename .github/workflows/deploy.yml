@@ -141,12 +141,25 @@ jobs:
               if anchor not in gui:
                   raise RuntimeError('Could not locate GUI initialization point')
               gui = gui.replace(anchor, anchor + '''
-                  const customExtensionUrl = new URL('./custom-extension.js', window.location.href).toString();
-                  this.props.vm.extensionManager.loadExtensionURL(customExtensionUrl, {type: 'unsandboxed'}).catch(error => {
-                      console.error('Could not load KryptoLite blocks:', error);
-                  });
-                  this.props.vm.runtime.on('CUSTOM_ALERT', message => window.alert(String(message)));
-                  this.props.vm.runtime.on('CUSTOM_CHAOS', () => window.dispatchEvent(new Event('scratch-chaos')));''', 1)
+                  const vm = this.props.vm;
+                  if (vm && !window.__zanyBlocksLoadStarted) {
+                      window.__zanyBlocksLoadStarted = true;
+                      vm.runtime.on('CUSTOM_ALERT', message => window.alert(String(message)));
+                      vm.runtime.on('CUSTOM_CHAOS', () => window.dispatchEvent(new Event('scratch-chaos')));
+                      const loadZanyBlocks = () => {
+                          const manager = vm.extensionManager;
+                          if (!manager || typeof manager.loadExtensionURL !== 'function') {
+                              window.setTimeout(loadZanyBlocks, 250);
+                              return;
+                          }
+                          const extensionUrl = new URL('custom-extension.js', document.baseURI).href;
+                          manager.loadExtensionURL(extensionUrl, {type: 'unsandboxed'}).catch(error => {
+                              console.error('Could not load Zany Blocks / Hidden Blocks:', error);
+                              window.__zanyBlocksLoadStarted = false;
+                          });
+                      };
+                      window.setTimeout(loadZanyBlocks, 0);
+                  }''', 1)
           gui_file.write_text(gui, encoding='utf-8')
           
           # Expose the live Blockly workspace to the modes controller.
@@ -161,27 +174,8 @@ jobs:
                   window.dispatchEvent(new Event('scratch-workspace-ready'));''', 1)
           blocks_file.write_text(blocks, encoding='utf-8')
           
-          # Add Modes inside the existing Settings dropdown.
-          settings_file = ROOT / 'src/components/menu-bar/settings-menu.jsx'
-          settings = settings_file.read_text(encoding='utf-8')
-          if 'scratch-open-modes' not in settings:
-              theme_expression = '{canChangeTheme && <ThemeMenu onRequestCloseSettings={onRequestClose} />}'
-              if theme_expression not in settings:
-                  raise RuntimeError('Could not locate complete Theme menu expression in Settings')
-              settings = settings.replace(theme_expression, theme_expression + '''
-                      <div
-                          role="menuitem"
-                          tabIndex="0"
-                          style={{padding: '8px 12px', cursor: 'pointer'}}
-                          onMouseUp={() => window.dispatchEvent(new Event('scratch-open-modes'))}
-                          onKeyDown={event => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                  window.dispatchEvent(new Event('scratch-open-modes'));
-                              }
-                          }}
-                      >Modes</div>''', 1)
-          settings_file.write_text(settings, encoding='utf-8')
-          
+          # Modes is inserted beside the Language control by custom-modes.js.
+          # Do not add it to Settings.
           # Blue top bar and hide the requested controls.
           css_file = ROOT / 'src/components/menu-bar/menu-bar.css'
           css_file.write_text(css_file.read_text(encoding='utf-8') + '''
@@ -210,7 +204,7 @@ jobs:
                   constructor () { this.alertUses = 0; this.runtime = Scratch.vm.runtime; this.runtime.on('PROJECT_LOADED', () => { this.alertUses = 0; }); }
                   getInfo () {
                       return {
-                          id: 'kryptoLite', name: 'KryptoLite', color1: '#2878d0', color2: '#1b5fa8', color3: '#12477e',
+                          id: 'zanyBlocks', name: 'Zany Blocks', color1: '#8b1e1e', color2: '#6d1515', color3: '#4a0d0d',
                           blocks: [
                               {opcode: 'alertMessage', blockType: Scratch.BlockType.COMMAND, text: 'alert [MESSAGE]',
                                   arguments: {MESSAGE: {type: Scratch.ArgumentType.STRING, defaultValue: 'Hello!'}}},
@@ -322,7 +316,7 @@ jobs:
               const state = {rng: false, progress: false, unlocked: []};
               try { Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
               const save = () => localStorage.setItem(KEY, JSON.stringify(state));
-              const types = ['kryptoLite_alertMessage', 'kryptoLite_endlessSuffering', 'kryptoLite_fleshBlock', 'kryptoHidden_scrollRight', 'kryptoHidden_scrollUp', 'kryptoHidden_alignScene', 'kryptoHidden_xScroll', 'kryptoHidden_yScroll', 'kryptoHidden_hideAllSprites', 'kryptoHidden_whenSpriteTouches', 'kryptoHidden_forEach', 'kryptoHidden_whileLoop', 'kryptoHidden_counter', 'kryptoHidden_incrementCounter', 'kryptoHidden_clearCounter', 'kryptoHidden_userId'];
+              const types = ['zanyBlocks_alertMessage', 'zanyBlocks_endlessSuffering', 'zanyBlocks_fleshBlock', 'kryptoHidden_scrollRight', 'kryptoHidden_scrollUp', 'kryptoHidden_alignScene', 'kryptoHidden_xScroll', 'kryptoHidden_yScroll', 'kryptoHidden_hideAllSprites', 'kryptoHidden_whenSpriteTouches', 'kryptoHidden_forEach', 'kryptoHidden_whileLoop', 'kryptoHidden_counter', 'kryptoHidden_incrementCounter', 'kryptoHidden_clearCounter', 'kryptoHidden_userId'];
               let allBlockTypes = [];
               function collectTypes () { const ws=getWorkspace(); if(!ws || !ws.getFlyout || !ws.getFlyout()) return; const f=ws.getFlyout().getWorkspace(); if(!f) return; allBlockTypes=[...new Set(f.getAllBlocks(false).map(b=>b.type))]; }
               let deleting = false;
@@ -393,13 +387,33 @@ jobs:
                       el.style.zIndex=String(100+Math.floor(Math.random()*500));
                   });
               }
+              function addModesButton () {
+                  if (document.getElementById('krypto-modes-trigger')) return;
+                  const bar = document.querySelector('.menu-bar');
+                  if (!bar) return;
+                  const button = document.createElement('button');
+                  button.id = 'krypto-modes-trigger';
+                  button.type = 'button';
+                  button.textContent = 'Modes ▾';
+                  button.setAttribute('aria-haspopup', 'menu');
+                  Object.assign(button.style, {height:'36px',margin:'0 4px',padding:'0 12px',border:0,borderRadius:'4px',
+                      background:'transparent',color:'#fff',font:'500 13px Arial,sans-serif',cursor:'pointer',whiteSpace:'nowrap'});
+                  button.addEventListener('mouseenter', () => { button.style.background='rgba(0,0,0,.13)'; });
+                  button.addEventListener('mouseleave', () => { button.style.background='transparent'; });
+                  button.addEventListener('click', openPanel);
+                  const language = bar.querySelector('.menu-bar_language-selector, [class*="language-selector"], [aria-label*="Language"], [title*="Language"]');
+                  if (language && language.parentNode) language.parentNode.insertBefore(button, language.nextSibling);
+                  else bar.appendChild(button);
+              }
               function openPanel () {
                   const old = document.getElementById('krypto-modes-panel');
                   if (old) { old.remove(); return; }
                   const panel = document.createElement('section');
                   panel.id = 'krypto-modes-panel';
-                  Object.assign(panel.style, {position:'fixed',top:'54px',right:'12px',width:'300px',zIndex:999998,
-                      background:'#fff',color:'#222',padding:'16px',borderRadius:'12px',boxShadow:'0 8px 32px #0005',font:'14px Arial'});
+                  const trigger = document.getElementById('krypto-modes-trigger');
+                  const rect = trigger ? trigger.getBoundingClientRect() : {bottom:54,left:12,right:120};
+                  Object.assign(panel.style, {position:'fixed',top:(rect.bottom+6)+'px',left:Math.max(8,Math.min(window.innerWidth-316,rect.left))+'px',width:'300px',zIndex:999998,
+                      background:'#fff',color:'#222',padding:'16px',borderRadius:'8px',boxShadow:'0 8px 32px #0005',font:'14px Arial'});
                   panel.innerHTML = '<h3 style="margin:0 0 12px">Experimental Modes</h3>' +
                       '<label style="display:flex;gap:8px;margin:12px 0"><input id="krng" type="checkbox"> RNG Mode</label>' +
                       '<p style="color:#555">When enabled, every toolbox block starts locked. Each roll unlocks one random block type.</p>' +
@@ -437,6 +451,10 @@ jobs:
                   panel.querySelector('#kclose').addEventListener('click', () => panel.remove());
               }
               window.addEventListener('scratch-open-modes', openPanel);
+              const menuObserver = new MutationObserver(addModesButton);
+              menuObserver.observe(document.documentElement, {childList:true,subtree:true});
+              window.addEventListener('load', addModesButton);
+              addModesButton();
               window.addEventListener('scratch-chaos', () => {
                   document.body.classList.add('krypto-chaos');
                   if (chaosTimer) clearInterval(chaosTimer);
@@ -460,7 +478,7 @@ jobs:
           })();
           ''', encoding='utf-8')
           
-          print('KryptoLite customizations installed.')
+          print('Zany Blocks and Hidden Blocks customizations installed.')
           print('Default sprite:', sprite.get('name', 'Sprite1'))
           print('Sprite assets:', len(items))
           PY
