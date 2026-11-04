@@ -142,11 +142,13 @@ jobs:
                   raise RuntimeError('Could not locate GUI initialization point')
               gui = gui.replace(anchor, anchor + '''
                   const customExtensionUrl = new URL('./custom-extension.js', window.location.href).toString();
-                  this.props.vm.extensionManager.loadExtensionURL(customExtensionUrl, {type: 'unsandboxed'}).catch(error => {
+                  this.props.vm.extensionManager.loadExtensionURL(customExtensionUrl).then(() => {
+                      console.info('KryptoLite extension loaded.');
+                      return this.props.vm.extensionManager.refreshBlocks();
+                  }).catch(error => {
                       console.error('Could not load KryptoLite blocks:', error);
-                  });
-                  this.props.vm.runtime.on('CUSTOM_ALERT', message => window.alert(String(message)));
-                  this.props.vm.runtime.on('CUSTOM_CHAOS', () => window.dispatchEvent(new Event('scratch-chaos')));''', 1)
+                      window.alert('KryptoLite blocks could not load. Check the browser console for details.');
+                  });''', 1)
           gui_file.write_text(gui, encoding='utf-8')
           
           # Expose the live Blockly workspace to the modes controller.
@@ -161,27 +163,9 @@ jobs:
                   window.dispatchEvent(new Event('scratch-workspace-ready'));''', 1)
           blocks_file.write_text(blocks, encoding='utf-8')
           
-          # Add Modes inside the existing Settings dropdown.
-          settings_file = ROOT / 'src/components/menu-bar/settings-menu.jsx'
-          settings = settings_file.read_text(encoding='utf-8')
-          if 'scratch-open-modes' not in settings:
-              theme_expression = '{canChangeTheme && <ThemeMenu onRequestCloseSettings={onRequestClose} />}'
-              if theme_expression not in settings:
-                  raise RuntimeError('Could not locate complete Theme menu expression in Settings')
-              settings = settings.replace(theme_expression, theme_expression + '''
-                      <div
-                          role="menuitem"
-                          tabIndex="0"
-                          style={{padding: '8px 12px', cursor: 'pointer'}}
-                          onMouseUp={() => window.dispatchEvent(new Event('scratch-open-modes'))}
-                          onKeyDown={event => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                  window.dispatchEvent(new Event('scratch-open-modes'));
-                              }
-                          }}
-                      >Modes</div>''', 1)
-          settings_file.write_text(settings, encoding='utf-8')
-          
+          # Modes is added by custom-modes.js as a top-bar dropdown, matching
+          # Scratch's Language menu. Do not add a second entry in Settings.
+
           # Blue top bar and hide the requested controls.
           css_file = ROOT / 'src/components/menu-bar/menu-bar.css'
           css_file.write_text(css_file.read_text(encoding='utf-8') + '''
@@ -206,29 +190,41 @@ jobs:
           # 3) Custom Scratch extension. Three alerts per loaded project.
           (ROOT / 'custom-extension.js').write_text(r'''(function () {
               'use strict';
+              // This extension runs in Scratch's extension worker. It must not
+              // access Scratch.vm or the page's window from this worker.
               class KryptoLiteBlocks {
-                  constructor () { this.alertUses = 0; this.runtime = Scratch.vm.runtime; this.runtime.on('PROJECT_LOADED', () => { this.alertUses = 0; }); }
+                  constructor () { this.alertUses = 0; }
                   getInfo () {
                       return {
-                          id: 'kryptoLite', name: 'KryptoLite', color1: '#2878d0', color2: '#1b5fa8', color3: '#12477e',
+                          id: 'kryptoLite',
+                          name: 'KryptoLite',
+                          color1: '#2878d0',
+                          color2: '#1b5fa8',
+                          color3: '#12477e',
                           blocks: [
-                              {opcode: 'alertMessage', blockType: Scratch.BlockType.COMMAND, text: 'alert [MESSAGE]',
-                                  arguments: {MESSAGE: {type: Scratch.ArgumentType.STRING, defaultValue: 'Hello!'}}},
-                              {opcode: 'endlessSuffering', blockType: Scratch.BlockType.COMMAND,
-                                  text: 'block of endless suffering and despair'}
+                              {
+                                  opcode: 'alertMessage',
+                                  blockType: Scratch.BlockType.COMMAND,
+                                  text: 'alert [MESSAGE]',
+                                  arguments: {
+                                      MESSAGE: {
+                                          type: Scratch.ArgumentType.STRING,
+                                          defaultValue: 'Hello!'
+                                      }
+                                  }
+                              },
+                              {
+                                  opcode: 'endlessSuffering',
+                                  blockType: Scratch.BlockType.COMMAND,
+                                  text: 'block of endless suffering and despair'
+                              }
                           ]
                       };
                   }
-                  alertMessage (args, util) {
-                      const runtime = this.runtime;
-                      if (this.alertUses >= 3) {
-                          runtime.emit('CUSTOM_ALERT', 'This project has reached its limit of 3 alerts.');
-                          return;
-                      }
+                  alertMessage () {
                       this.alertUses += 1;
-                      runtime.emit('CUSTOM_ALERT', args.MESSAGE);
                   }
-                  endlessSuffering () { this.runtime.emit('CUSTOM_CHAOS'); }
+                  endlessSuffering () {}
               }
               Scratch.extensions.register(new KryptoLiteBlocks());
           })();
@@ -282,13 +278,34 @@ jobs:
                   refreshLocks();
               }
               function resetChaos () { document.body.classList.remove('krypto-chaos'); }
+              function createModesMenu () {
+                  const bar = document.querySelector('.menu-bar');
+                  if (!bar || document.getElementById('krypto-modes-menu')) return;
+                  const wrap = document.createElement('div');
+                  wrap.id = 'krypto-modes-menu';
+                  wrap.className = 'krypto-modes-menu';
+                  const button = document.createElement('button');
+                  button.type = 'button';
+                  button.textContent = 'Modes ▾';
+                  button.setAttribute('aria-haspopup', 'true');
+                  button.setAttribute('aria-expanded', 'false');
+                  button.addEventListener('click', () => {
+                      const panel = document.getElementById('krypto-modes-panel');
+                      if (panel) { panel.remove(); button.setAttribute('aria-expanded', 'false'); }
+                      else { openPanel(); button.setAttribute('aria-expanded', 'true'); }
+                  });
+                  wrap.appendChild(button);
+                  bar.appendChild(wrap);
+              }
               function openPanel () {
                   const old = document.getElementById('krypto-modes-panel');
                   if (old) { old.remove(); return; }
                   const panel = document.createElement('section');
                   panel.id = 'krypto-modes-panel';
-                  Object.assign(panel.style, {position:'fixed',top:'54px',right:'12px',width:'300px',zIndex:999998,
-                      background:'#fff',color:'#222',padding:'16px',borderRadius:'12px',boxShadow:'0 8px 32px #0005',font:'14px Arial'});
+                  const menu = document.getElementById('krypto-modes-menu');
+                  const rect = menu ? menu.getBoundingClientRect() : {left: window.innerWidth - 320, bottom: 48};
+                  Object.assign(panel.style, {position:'fixed',top:(rect.bottom + 4) + 'px',left:Math.max(8, Math.min(rect.left, window.innerWidth - 316)) + 'px',width:'300px',zIndex:999998,
+                      background:'#fff',color:'#222',padding:'16px',border:'1px solid #b5b5b5',borderRadius:'4px',boxShadow:'0 4px 12px #0003',font:'14px Arial'});
                   panel.innerHTML = '<h3 style="margin:0 0 12px">Experimental Modes</h3>' +
                       '<label style="display:flex;gap:8px;margin:12px 0"><input id="krng" type="checkbox"> RNG Mode</label>' +
                       '<p style="color:#555">Roll to unlock the two custom blocks. Each roll unlocks one random block.</p>' +
@@ -314,41 +331,36 @@ jobs:
                       toast('Unlocked: ' + (chosen.endsWith('alertMessage') ? 'alert ( )' : 'block of endless suffering and despair'));
                   });
                   panel.querySelector('#kreset').addEventListener('click', resetChaos);
-                  panel.querySelector('#kclose').addEventListener('click', () => panel.remove());
-              }
-              // A dedicated launcher keeps Modes accessible even if Scratch's
-              // Settings dropdown layout changes between GUI versions.
-              function addModesButton () {
-                  if (!document.body || document.getElementById('krypto-modes-launcher')) return;
-                  const button = document.createElement('button');
-                  button.id = 'krypto-modes-launcher';
-                  button.type = 'button';
-                  button.textContent = 'Modes';
-                  Object.assign(button.style, {
-                      position: 'fixed', top: '58px', right: '14px', zIndex: '999997',
-                      padding: '8px 14px', border: '1px solid #0d5598', borderRadius: '7px',
-                      background: '#1677d2', color: '#fff', font: 'bold 13px Arial',
-                      cursor: 'pointer', boxShadow: '0 2px 8px #0003'
-                  });
-                  button.addEventListener('click', openPanel);
-                  document.body.appendChild(button);
+                  panel.querySelector('#kclose').addEventListener('click', () => { panel.remove(); const b = document.querySelector('#krypto-modes-menu button'); if (b) b.setAttribute('aria-expanded', 'false'); });
               }
               window.addEventListener('scratch-open-modes', openPanel);
+              const menuObserver = new MutationObserver(createModesMenu);
+              menuObserver.observe(document.documentElement, {childList:true, subtree:true});
+              document.addEventListener('DOMContentLoaded', createModesMenu);
+              window.addEventListener('load', createModesMenu);
               window.addEventListener('scratch-chaos', () => {
                   document.body.classList.add('krypto-chaos');
                   toast('ENDLESS SUFFERING AND DESPAIR — Reset Chaos or press Escape to restore the interface.');
               });
-              window.addEventListener('scratch-workspace-ready', () => { attachWorkspace(); refreshLocks(); });
-              document.addEventListener('keydown', event => { if (event.key === 'Escape') resetChaos(); });
-              const observer = new MutationObserver(() => { addModesButton(); attachWorkspace(); refreshLocks(); });
-              if (document.readyState === 'loading') {
-                  document.addEventListener('DOMContentLoaded', addModesButton, {once: true});
-              } else {
-                  addModesButton();
-              }
+              document.addEventListener('scratch-workspace-ready', () => { attachWorkspace(); refreshLocks(); });
+              document.addEventListener('keydown', event => { if (event.key === 'Escape') { resetChaos(); const panel = document.getElementById('krypto-modes-panel'); if (panel) panel.remove(); const b = document.querySelector('#krypto-modes-menu button'); if (b) b.setAttribute('aria-expanded', 'false'); } });
+              document.addEventListener('click', event => {
+                  const panel = document.getElementById('krypto-modes-panel');
+                  const menu = document.getElementById('krypto-modes-menu');
+                  if (panel && !panel.contains(event.target) && menu && !menu.contains(event.target)) {
+                      panel.remove();
+                      const b = menu.querySelector('button');
+                      if (b) b.setAttribute('aria-expanded', 'false');
+                  }
+              });
+              const observer = new MutationObserver(() => { attachWorkspace(); refreshLocks(); });
               observer.observe(document.documentElement, {childList:true, subtree:true});
               const style = document.createElement('style');
               style.textContent = `
+                .krypto-modes-menu { display:flex; align-items:stretch; height:100%; margin-left:4px; }
+                .krypto-modes-menu button { height:100%; border:0; border-radius:0; padding:0 12px; background:transparent; color:#fff; font:600 13px Arial,sans-serif; cursor:pointer; }
+                .krypto-modes-menu button:hover, .krypto-modes-menu button:focus-visible { background:rgba(0,0,0,.16); outline:none; }
+                #krypto-modes-panel button { cursor:pointer; border:1px solid #aaa; border-radius:3px; background:#f7f7f7; }
                 body.krypto-chaos .menu-bar { animation:krypto-wobble .22s infinite alternate !important; filter:hue-rotate(145deg) contrast(1.7) !important; }
                 body.krypto-chaos .blocklyWorkspace { animation:krypto-wobble .17s infinite alternate !important; filter:hue-rotate(220deg) saturate(3) !important; }
                 body.krypto-chaos .stage-wrapper { transform:rotate(1.5deg) scale(.97); filter:invert(.12) hue-rotate(80deg); }
