@@ -1,0 +1,339 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE ODDITY CHATROOM</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Arimo:wght@400;700&display=swap');
+
+body {
+    margin: 8px;
+    background: #10091b;
+    background-image: url("https://www.transparenttextures.com/patterns/stardust.png");
+    color: #ffffcc;
+    font-family: Arimo, Arial, sans-serif;
+}
+a { color: cyan; }
+a:visited { color: #ff99ff; }
+a:hover { color: yellow; background: purple; }
+h1 {
+    color: yellow;
+    text-align: center;
+    text-shadow: 3px 3px magenta;
+}
+.outer {
+    max-width: 850px;
+    margin: auto;
+    border: 5px ridge #9900cc;
+    background: #190d28;
+    padding: 12px;
+}
+.banner {
+    text-align: center;
+    background: linear-gradient(90deg,#45005a,#001b55,#550044);
+    padding: 12px;
+}
+marquee {
+    background: #650065;
+    color: yellow;
+    padding: 6px;
+}
+.box {
+    border: 3px ridge #9933cc;
+    background: #21112d;
+    padding: 12px;
+    margin: 12px 0;
+}
+#messages {
+    height: 350px;
+    overflow-y: auto;
+    background: #080510;
+    border: 3px inset #9955bb;
+    padding: 8px;
+}
+.message {
+    border-bottom: 1px dotted #774488;
+    padding: 7px 3px;
+    overflow-wrap: anywhere;
+}
+.message-name { color: #66ffff; font-weight: bold; }
+.message-time { color: #999; font-size: 11px; }
+.message-text { color: #ffffcc; white-space: pre-wrap; }
+.report {
+    font-size: 11px;
+    padding: 2px 5px;
+    margin-left: 8px;
+}
+input, textarea, button {
+    font-family: Arimo, Arial, sans-serif;
+    max-width: 100%;
+}
+input, textarea {
+    background: #080510;
+    color: white;
+    border: 2px inset #9955bb;
+    padding: 7px;
+}
+button {
+    color: yellow;
+    background: #4c1768;
+    border: 2px outset #bd75e5;
+    padding: 7px 12px;
+    cursor: pointer;
+}
+button:hover { background: #790079; }
+#messageInput { width: 98%; height: 55px; }
+#status { color: yellow; }
+.warning { color: #ff8888; }
+footer { text-align: center; font-size: 12px; color: #bb99cc; }
+</style>
+</head>
+
+<body>
+<div class="outer">
+
+<div class="banner">
+    <h1>THE ODDITY CHATROOM</h1>
+    <p class="rainbow">A PLACE FOR INTERNET PEOPLE TO TALK.</p>
+    <p>ESTABLISHED SOME TIME AFTER THE INTERNET WAS INVENTED</p>
+</div>
+
+<marquee scrollamount="4">
+    *** WELCOME TO THE ODDITY CHATROOM *** BE NICE TO EACH OTHER ***
+    N0IR IS NOT RESPONSIBLE FOR YOUR CONVERSATIONS ***
+</marquee>
+
+<div class="box">
+    <p><a href="index.html">[ BACK TO THE MAIN WEBSITE ]</a></p>
+    <h2 style="color:cyan">Welcome to the chatroom!</h2>
+    <p>This is a public room. Messages sent here can be seen by other visitors.</p>
+    <p class="warning"><b>Safety reminder:</b> Don't share your real name, address, school, phone number, passwords, or other private information. Be respectful, and don't arrange to meet strangers.</p>
+</div>
+
+<div class="box">
+    <h2 style="color:#ff66ff">Your Chat Identity</h2>
+    <label for="username">Choose a display name:</label><br><br>
+    <input id="username" maxlength="20" placeholder="Internet nickname">
+    <p><small>Your nickname is displayed with your messages. Don't use your real name.</small></p>
+    <p id="status">Connecting to the server...</p>
+</div>
+
+<div class="box">
+    <h2 style="color:#66ffff">LIVE CHAT</h2>
+    <div id="messages" aria-live="polite">
+        <p>Connecting to the chat server...</p>
+    </div>
+    <p><small>Showing the latest messages. New messages appear automatically.</small></p>
+</div>
+
+<div class="box">
+    <h2 style="color:#ff66ff">Send a Message</h2>
+    <form id="chatForm">
+        <textarea id="messageInput" maxlength="300" placeholder="Type your message here..." required></textarea>
+        <p><small>Maximum 300 characters. Please wait between messages.</small></p>
+        <button id="sendButton" type="submit" disabled>SEND MESSAGE</button>
+    </form>
+</div>
+
+<div class="box">
+    <h3 style="color:yellow">CHATROOM RULES</h3>
+    <ol>
+        <li>Be respectful to other visitors.</li>
+        <li>Do not post personal information.</li>
+        <li>No spam or flooding.</li>
+        <li>No harassment, threats, or bullying.</li>
+        <li>Do not post suspicious links.</li>
+        <li>Use the report button if a message is inappropriate.</li>
+    </ol>
+    <p class="warning">Messages are public. Do not treat this room as a private conversation.</p>
+</div>
+
+<footer>
+    <p>THE ODDITY CHATROOM</p>
+    <p>Powered by Firebase. Styled like it probably runs on a computer from 2002.</p>
+    <p><a href="index.html">RETURN TO THE MAIN SITE</a></p>
+</footer>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import {
+    getDatabase, ref, push, query, orderByChild, limitToLast,
+    onChildAdded, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+import {
+    getAuth, signInAnonymously
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+/*
+  PASTE YOUR FIREBASE WEB APP CONFIG HERE.
+  Firebase Console > Project settings > Your apps > Web app.
+*/
+const firebaseConfig = {
+    apiKey: "PASTE_API_KEY_HERE",
+    authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://PASTE_DATABASE_NAME.firebaseio.com",
+    projectId: "PASTE_PROJECT_ID",
+    storageBucket: "PASTE_PROJECT_ID.firebasestorage.app",
+    messagingSenderId: "PASTE_SENDER_ID",
+    appId: "PASTE_APP_ID"
+};
+
+const statusText = document.getElementById("status");
+const messagesBox = document.getElementById("messages");
+const usernameInput = document.getElementById("username");
+const messageInput = document.getElementById("messageInput");
+const sendButton = document.getElementById("sendButton");
+const chatForm = document.getElementById("chatForm");
+
+let database;
+let auth;
+let currentUser = null;
+let lastSentAt = 0;
+
+function setStatus(message) {
+    statusText.textContent = message;
+}
+
+function showError(message) {
+    setStatus(message);
+}
+
+function addMessage(message, messageId) {
+    const row = document.createElement("div");
+    row.className = "message";
+
+    const name = document.createElement("span");
+    name.className = "message-name";
+    name.textContent = message.username || "Unknown";
+
+    const time = document.createElement("span");
+    time.className = "message-time";
+    const date = new Date(message.createdAt || Date.now());
+    time.textContent = " [" + date.toLocaleString() + "] ";
+
+    const text = document.createElement("div");
+    text.className = "message-text";
+    text.textContent = message.text || "";
+
+    const report = document.createElement("button");
+    report.className = "report";
+    report.type = "button";
+    report.textContent = "REPORT";
+    report.addEventListener("click", () => reportMessage(messageId));
+
+    row.append(name, time, text, report);
+    messagesBox.appendChild(row);
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+}
+
+async function reportMessage(messageId) {
+    if (!currentUser) return;
+
+    const confirmed = confirm("Report this message to the site owner?");
+    if (!confirmed) return;
+
+    try {
+        await push(ref(database, "reports"), {
+            messageId,
+            reporterUid: currentUser.uid,
+            createdAt: serverTimestamp()
+        });
+        alert("Report submitted. Thank you.");
+    } catch (error) {
+        alert("Could not submit the report. Please try again later.");
+    }
+}
+
+async function startChat() {
+    if (firebaseConfig.apiKey.startsWith("PASTE_") ||
+        firebaseConfig.projectId === "PASTE_PROJECT_ID") {
+        setStatus("Firebase isn't configured yet. Add your Firebase web app config.");
+        messagesBox.textContent = "The chatroom is waiting for its Firebase setup.";
+        return;
+    }
+
+    try {
+        const app = initializeApp(firebaseConfig);
+        database = getDatabase(app);
+        auth = getAuth(app);
+
+        const credentials = await signInAnonymously(auth);
+        currentUser = credentials.user;
+
+        setStatus("CONNECTED! You are now in the Oddity Chatroom.");
+        sendButton.disabled = false;
+
+        const recentMessages = query(
+            ref(database, "messages"),
+            orderByChild("createdAt"),
+            limitToLast(60)
+        );
+
+        messagesBox.replaceChildren();
+
+        onChildAdded(recentMessages, snapshot => {
+            addMessage(snapshot.val(), snapshot.key);
+        }, error => {
+            showError("Could not read chat messages: " + error.message);
+        });
+
+    } catch (error) {
+        console.error(error);
+        showError("Connection failed. Check your Firebase setup and database rules.");
+        messagesBox.textContent = "Unable to connect to the chat server.";
+    }
+}
+
+chatForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (!currentUser || !database) return;
+
+    const username = usernameInput.value.trim().replace(/\s+/g, " ");
+    const text = messageInput.value.trim();
+
+    if (!username) {
+        alert("Please choose a display name first.");
+        usernameInput.focus();
+        return;
+    }
+
+    if (!text) return;
+
+    if (username.length > 20 || text.length > 300) {
+        alert("Your name or message is too long.");
+        return;
+    }
+
+    const now = Date.now();
+    if (now - lastSentAt < 2500) {
+        alert("Please wait a moment before sending another message.");
+        return;
+    }
+
+    lastSentAt = now;
+    sendButton.disabled = true;
+
+    try {
+        await push(ref(database, "messages"), {
+            uid: currentUser.uid,
+            username,
+            text,
+            createdAt: serverTimestamp()
+        });
+        messageInput.value = "";
+    } catch (error) {
+        console.error(error);
+        showError("Message failed to send. Check your connection.");
+    } finally {
+        sendButton.disabled = false;
+    }
+});
+
+startChat();
+</script>
+</body>
+</html>
