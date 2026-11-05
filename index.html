@@ -1,112 +1,1276 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#2f80c9">
-  <title>Blueyfans Rather Odd Scratch Editor Of Zany Mystery</title>
-  <style>
-    * {
-      box-sizing: border-box;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Blueyfan's Digital Oddity Requiem</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Arimo:wght@400;700&display=swap');
+
+* {
+    box-sizing: border-box;
+    font-family: 'Arimo', Arial, sans-serif;
+}
+
+body {
+    margin: 0;
+    color: #ffff00;
+    background-color: #160044;
+    background-image:
+        radial-gradient(#ff00ff 1px, transparent 1px),
+        radial-gradient(#00ffff 1px, transparent 1px);
+    background-size: 19px 19px, 31px 31px;
+    background-position: 0 0, 10px 10px;
+}
+
+a {
+    color: #00ffff;
+    font-weight: bold;
+}
+
+a:visited { color: #ff80ff; }
+a:hover { color: yellow; background: red; }
+
+header {
+    text-align: center;
+    background: linear-gradient(90deg, red, magenta, blue, cyan);
+    border: 5px ridge yellow;
+    padding: 15px;
+}
+
+h1 {
+    font-size: clamp(25px, 5vw, 48px);
+    color: yellow;
+    text-shadow: 4px 4px black, -2px -2px red;
+    margin: 5px;
+}
+
+.subtitle {
+    color: white;
+    font-size: 14px;
+}
+
+.marquee {
+    background: black;
+    color: lime;
+    padding: 8px;
+    border-top: 3px dashed red;
+    border-bottom: 3px dashed cyan;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.marquee span {
+    display: inline-block;
+    animation: scroll 18s linear infinite;
+}
+
+@keyframes scroll {
+    from { transform: translateX(100%); }
+    to { transform: translateX(-100%); }
+}
+
+@keyframes rainbow {
+    0% { color: red; }
+    20% { color: yellow; }
+    40% { color: lime; }
+    60% { color: cyan; }
+    80% { color: magenta; }
+    100% { color: red; }
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+.rainbow { animation: rainbow 3s linear infinite; }
+.blink { animation: blink 1s steps(2, start) infinite; }
+
+.container {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+    max-width: 1100px;
+    margin: auto;
+}
+
+.panel {
+    background: #100050;
+    border: 4px ridge #ff00ff;
+    padding: 10px;
+    box-shadow: 4px 4px black;
+    min-width: 0;
+}
+
+.panel h2 {
+    background: linear-gradient(90deg, red, purple, blue);
+    color: yellow;
+    padding: 5px;
+    text-align: center;
+    font-size: 19px;
+}
+
+nav a {
+    display: block;
+    background: #0000aa;
+    border: 2px outset cyan;
+    padding: 7px;
+    margin: 7px 0;
+    text-decoration: none;
+}
+
+nav a:hover { background: red; }
+
+hr {
+    border: 0;
+    border-top: 3px dashed lime;
+    margin: 15px 0;
+}
+
+button {
+    font-weight: bold;
+    background: linear-gradient(white, silver);
+    border: 3px outset white;
+    padding: 7px 12px;
+    cursor: pointer;
+    color: blue;
+}
+
+button:active { border-style: inset; }
+
+input, textarea {
+    font-family: 'Arimo', Arial, sans-serif;
+    max-width: 100%;
+}
+
+.counter {
+    background: black;
+    color: lime;
+    padding: 7px;
+    text-align: center;
+    border: 3px inset gray;
+    font-family: monospace;
+    font-size: 22px;
+    letter-spacing: 4px;
+}
+
+.sticker {
+    display: inline-block;
+    border: 3px ridge yellow;
+    padding: 5px;
+    margin: 4px;
+    background: navy;
+    font-size: 13px;
+}
+
+footer {
+    text-align: center;
+    background: black;
+    border-top: 5px ridge magenta;
+    padding: 20px;
+    color: lime;
+}
+
+#clock {
+    color: cyan;
+    font-family: monospace;
+}
+
+.guest-entry {
+    border: 2px dotted cyan;
+    padding: 8px;
+    margin: 8px 0;
+    background: #220044;
+    overflow-wrap: anywhere;
+}
+
+/* ODDITY DIRECTORY */
+
+.oddity-card {
+    background: #170044;
+    border: 3px ridge #ff00ff;
+    margin: 12px 0;
+    padding: 12px;
+    box-shadow: 3px 3px black;
+}
+
+.oddity-card:nth-child(even) {
+    background: #31004e;
+    border-color: cyan;
+    margin-left: 12px;
+}
+
+.oddity-card:nth-child(3n) {
+    border-color: yellow;
+    margin-right: 15px;
+}
+
+.oddity-card h3 {
+    margin-top: 0;
+    color: cyan;
+    text-decoration: underline;
+}
+
+.oddity-card p {
+    color: white;
+    line-height: 1.5;
+}
+
+.oddity-card a {
+    display: inline-block;
+    background: #000099;
+    border: 2px outset cyan;
+    padding: 7px 12px;
+    text-decoration: none;
+}
+
+.oddity-card a:hover { background: red; }
+
+.site-category {
+    color: lime;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.site-number {
+    color: yellow;
+    float: right;
+    font-family: monospace;
+}
+
+/* N0IR ARCHIVES */
+
+.noir-panel {
+    background: #080808;
+    border: 4px ridge #777777;
+    padding: 14px;
+    color: #dddddd;
+    box-shadow: 4px 4px black;
+}
+
+.noir-panel h2 {
+    background: linear-gradient(90deg, #111111, #444444, #111111);
+    color: white;
+    border-bottom: 2px solid #aaaaaa;
+    letter-spacing: 3px;
+}
+
+.noir-title {
+    text-align: center;
+    color: white;
+    font-size: 30px;
+    letter-spacing: 8px;
+    text-shadow: 3px 3px #555555;
+}
+
+.noir-timeline {
+    border-left: 4px solid #999999;
+    margin: 20px 10px;
+    padding-left: 15px;
+}
+
+.noir-event {
+    background: #191919;
+    border: 1px solid #666666;
+    padding: 12px;
+    margin: 15px 0;
+}
+
+.noir-year {
+    color: #bbbbbb;
+    font-size: 23px;
+    font-weight: bold;
+}
+
+.noir-event p {
+    color: #dddddd;
+    line-height: 1.5;
+}
+
+.noir-note {
+    color: #aaaaaa;
+    font-size: 12px;
+    font-style: italic;
+}
+
+.noir-disclaimer {
+    background: #330000;
+    border: 4px ridge red;
+    padding: 12px;
+    margin: 15px 0;
+    text-align: center;
+    color: yellow;
+    font-size: 13px;
+}
+
+.warning {
+    background: #550000;
+    color: yellow;
+    border: 2px dashed red;
+    padding: 8px;
+    font-size: 12px;
+}
+
+@media(max-width: 650px) {
+    .container { grid-template-columns: 1fr; }
+
+    nav {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px;
     }
 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      padding: 35px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #d9efff;
-      color: #24384b;
-      font-family: "Comic Sans MS", "Comic Sans", cursive;
+    nav a { margin: 0; }
+
+    .oddity-card:nth-child(even) {
+        margin-left: 0;
     }
 
-    main {
-      width: 100%;
-      max-width: 720px;
-      padding: 38px 30px 32px;
-      text-align: center;
-      background: #ffffff;
-      border: 3px solid #75b8e8;
-      border-radius: 12px;
-      box-shadow: 5px 6px 0 #a9d5f2;
+    .noir-title {
+        font-size: 24px;
+        letter-spacing: 4px;
     }
-
-    h1 {
-      margin: 0 auto 18px;
-      max-width: 620px;
-      color: #246eae;
-      font-size: clamp(30px, 6vw, 48px);
-      line-height: 1.18;
-      font-weight: bold;
-    }
-
-    .subtitle {
-      max-width: 510px;
-      margin: 0 auto 28px;
-      color: #526b7e;
-      font-size: 17px;
-      line-height: 1.5;
-    }
-
-    .launch {
-      display: inline-block;
-      padding: 13px 25px;
-      border: 2px solid #1e659f;
-      border-radius: 8px;
-      background: #398bd0;
-      color: white;
-      font-size: 18px;
-      font-weight: bold;
-      text-decoration: none;
-      box-shadow: 0 4px 0 #1e659f;
-      transition: background-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
-    }
-
-    .launch:hover {
-      background: #2679bd;
-      transform: translateY(2px);
-      box-shadow: 0 2px 0 #1e659f;
-    }
-
-    .launch:active {
-      transform: translateY(4px);
-      box-shadow: none;
-    }
-
-    .launch:focus-visible {
-      outline: 3px solid #f2b544;
-      outline-offset: 4px;
-    }
-
-    .footer {
-      margin-top: 28px;
-      color: #7892a6;
-      font-size: 13px;
-    }
-
-    @media (max-width: 480px) {
-      main {
-        padding: 30px 18px 26px;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        transition: none !important;
-      }
-    }
-  </style>
+}
+</style>
 </head>
+
 <body>
-  <main>
-    <h1>Blueyfans Rather Odd Scratch Editor Of Zany Mystery</h1>
-    <p class="subtitle">
-      Welcome! Make something weird, try out some blocks, and have fun.
+
+<header>
+    <div class="subtitle">~*~ WELCOME TO THE INTERNET ~*~</div>
+
+    <h1>BLUEYFAN'S DIGITAL ODDITY REQUIEM</h1>
+
+    <div class="subtitle">
+        EST. 2002 | THE INTERNET'S STRANGEST CORNER
+    </div>
+
+    <p class="rainbow">
+        * IMAGINATION HAS NO LIMITS *
     </p>
-    <a class="launch" href="/editor/">Launch Editor &raquo;</a>
-    <div class="footer">A little corner of the internet.</div>
-  </main>
+</header>
+
+<div class="marquee">
+    <span>
+        *** WELCOME VISITOR *** YOU HAVE ENTERED THE DIGITAL ODDITY REQUIEM ***
+        PLEASE ENJOY YOUR STAY *** BEST VIEWED AT 800x600 ***
+        THE INTERNET IS A WEIRD PLACE *** XD ***
+        N0IR HAS BEEN AROUND LONGER THAN YOU THINK ***
+    </span>
+</div>
+
+<div class="container">
+
+<!-- SIDEBAR -->
+
+<aside class="panel">
+
+    <h2> NAVIGATION </h2>
+
+    <nav>
+        <a href="#home">[HOME]</a>
+        <a href="#about">[?] ABOUT</a>
+        <a href="#oddities">O_o ODDITIES</a>
+        <a href="#experiments">[EXPERIMENTS]</a>
+        <a href="#noir">[N0IR ARCHIVES]</a>
+        <a href="#guestbook">:D GUESTBOOK</a>
+        <a href="#webring">* WEBRING *</a>
+    </nav>
+
+    <hr>
+
+    <h2> VISITOR COUNTER </h2>
+
+    <div class="counter" id="counter">000000</div>
+
+    <p style="text-align:center;font-size:11px">
+        YOU ARE VISITOR NUMBER...
+    </p>
+
+    <hr>
+
+    <h2> LOCAL TIME </h2>
+    <div id="clock">Loading...</div>
+
+    <hr>
+
+    <center>
+        <div class="sticker blink">
+            UNDER CONSTRUCTION
+        </div>
+
+        <p>!! !! !!</p>
+
+        <div class="sticker">
+            MADE WITH 100% PURE HTML
+        </div>
+
+        <p style="font-size:12px;color:cyan">
+            BEST VIEWED WITH NETSCAPE
+        </p>
+    </center>
+
+</aside>
+
+<!-- MAIN CONTENT -->
+
+<main class="panel" id="home">
+
+    <center>
+        <h2 class="rainbow">
+            WELCOME TO MY DIGITAL DOMAIN!!!
+        </h2>
+
+        <p style="font-size:22px;color:cyan">
+            Greetings, internet traveler!
+        </p>
+
+        <p>
+            You have stumbled upon one of the strangest places
+            on the World Wide Web.
+        </p>
+
+        <p>
+            This website contains strange websites, unnecessary
+            colors, internet experiments, and things that probably
+            shouldn't exist.
+        </p>
+
+        <p class="blink" style="color:red;font-size:20px">
+            !!! YOU HAVE BEEN WARNED !!!
+        </p>
+
+        <hr>
+
+        <div style="font-size:35px;color:magenta">
+            O_o &nbsp; [DISK] &nbsp; @ &nbsp; XD
+        </div>
+
+        <p>
+            <i>"The internet was a mistake. A beautiful mistake."</i>
+        </p>
+    </center>
+
+    <hr>
+
+    <!-- ABOUT -->
+
+    <section id="about">
+
+        <h2> ABOUT THIS WEBSITE </h2>
+
+        <p>
+            Welcome to Blueyfan's Digital Oddity Requiem!
+        </p>
+
+        <p>
+            This website is a digital playground dedicated to
+            weirdness, randomness, experiments, and questionable
+            internet culture.
+        </p>
+
+        <p>
+            Created by: <b>Blueyfan</b><br>
+            Website version: 3.0<br>
+            Original launch date: Somewhere in 2002 (in spirit)<br>
+            Current status: <font color="lime">ONLINE</font>
+        </p>
+
+        <p>
+            This website is proudly associated with N0IR,
+            an organization with a rather unusual history.
+        </p>
+
+    </section>
+
+    <hr>
+
+    <!-- ODDITY DIRECTORY -->
+
+    <section id="oddities">
+
+        <h2> THE ODDITY DIRECTORY </h2>
+
+        <center>
+            <p style="color:lime">
+                [ REAL WEBSITES FROM A VERY STRANGE INTERNET ]
+            </p>
+
+            <p>
+                Click a link below. Enter at your own curiosity.
+            </p>
+
+            <div class="sticker">11 KNOWN ODDITIES</div>
+            <div class="sticker">100% REAL WEBSITES</div>
+            <div class="sticker">UPDATED WHENEVER</div>
+        </center>
+
+        <hr>
+
+        <div class="oddity-card">
+            <span class="site-number">[001]</span>
+            <div class="site-category">INTERACTIVE / VISUAL CHAOS</div>
+            <h3>STAGGERING BEAUTY</h3>
+
+            <p>
+                A strange interactive website featuring a little
+                black worm-like creature. Move your mouse around
+                and watch it react to your movements.
+            </p>
+
+            <p>It starts innocently enough. Things can get considerably more chaotic.</p>
+
+            <div class="warning">
+                WARNING: Contains flashing imagery and loud sounds.
+                Be cautious before opening.
+            </div>
+
+            <p>
+                <a href="https://www.staggeringbeauty.com/"
+                target="_blank" rel="noopener noreferrer">
+                    [ VISIT STAGGERING BEAUTY ]
+                </a>
+            </p>
+        </div>
+
+        <div class="oddity-card">
+            <span class="site-number">[002]</span>
+            <div class="site-category">DIGITAL ART / VISUAL</div>
+            <h3>FALLING FALLING</h3>
+
+            <p>
+                An endless audiovisual experience.
+                Colorful layers continuously fall down the screen,
+                creating the illusion that everything is descending
+                forever.
+            </p>
+
+            <p>There is no destination. There is no ending. Just falling.</p>
+
+            <p>
+                <a href="https://fallingfalling.com/"
+                target="_blank" rel="noopener noreferrer">
+                    [ ENTER THE FALL ]
+                </a>
+            </p>
+        </div>
+
+        <div class="oddity-card">
+            <span class="site-number">[003]</span>
+            <div class="site-category">INTERACTIVE / PHOTOGRAPHY</div>
+            <h3>POINTER POINTER</h3>
+
+            <p>
+                Move your mouse anywhere on the page.
+                The website finds a photograph of somebody
+                pointing directly at your cursor.
+            </p>
+
+            <p>How do they keep doing that? O_o</p>
+
+            <p>
+                <a href="https://pointerpointer.com/"
+                target="_blank" rel="noopener noreferrer">
+                    [ FIND THE POINTER ]
+                </a>
+            </p>
+        </div>
+
+        <div class="oddity-card">
+            <span class="site-number">[004]</span>
+            <div class="site-category">ENDLESS ART / ANIMATION</div>
+            <h3>ZOOMQUILT</h3>
+
+            <p>
+                An endlessly zooming collaborative painting.
+                The artwork keeps transitioning into another
+                strange scene, which leads into another,
+                and another...
+            </p>
+
+            <p>It just keeps going.</p>
+
+            <p>
+                <a href="https://zoomquilt.org/"
+                target="_blank" rel="noopener noreferrer">
+                    [ ENTER THE ZOOM ]
+                </a>
+            </p>
+        </div>
+
+        <div class="oddity-card">
+            <span class="site-number">[005]</span>
+            <div class="site-category">POINTLESS / INTERACTIVE</div>
+            <h3>CAT BOUNCE</h3>
+
+            <p>
+                A website containing bouncing cats.
+                You can throw them around the screen.
+                There is absolutely no practical purpose.
+            </p>
+
+            <p>The internet has peaked.</p>
+
+            <p>
+                <a href="https://cat-bounce.com/"
+                target="_blank" rel="noopener noreferrer">
+                    [ RELEASE THE CATS ]
+                </a>
+            </p>
+        </div>
+
+        <div class="oddity-card">
+            <span class="site-number">[006]</span>
+            <div class="site-category">INTERACTIVE / STRANGE</div>
+            <h3>FIND THE INVISIBLE COW</h3>
+
+            <p>
+                Somewhere on your screen is an invisible cow.
+                Move your cursor around and listen carefully
+                to find it.
+            </p>
+
+            <p>Yes. An invisible cow.</p>
+
+            <p>
+                <a href="https://findtheinvisiblecow.com/"
+                target="_blank" rel="noopener noreferrer">
+                    [ FIND THE COW ]
+                </a>
+            </p>
+        </div>
+
+        <div class="oddity-card">
+            <span class="site-number">[007]</span>
+            <div class="site-category">INFINITE / ABSURD</div>
+            <h3>ENDLESS HORSE</h3>
+
+            <p>
+                A horse with legs that seem to go on forever.
+                Keep scrolling. Seriously.
+            </p>
+
+            <p>You might be scrolling for a while.</p>
+
+            <p>
+                <a href="https://endless.horse/"
+                target="_blank" rel="noopener noreferrer">
+                    [ MEET THE HORSE ]
+                </a>
+            </p>
+        </div>
+
+        <div class="oddity-card">
+            <span class="site-number">[008]</span>
+            <div class="site-category">FAKE COMPUTER / INTERNET NOSTALGIA</div>
+            <h3>WINDOWS 93</h3>
+
+            <p>
+                What if Windows 93 actually existed?
+                Explore a bizarre fictional operating system
+                filled with strange programs, surprises,
+                and internet nonsense.
+            </p>
+
+            <p>A very questionable computer experience.</p>
+
+            <p>
+                <a href="https://www.windows93.net/"
+                target="_blank" rel="noopener noreferrer">
+                    [ BOOT WINDOWS 93 ]
+                </a>
+            </p>
+        </div>
+
+        <div class="oddity-card">
+            <span class="site-number">[009]</span>
+            <div class="site-category">INTERNET / RANDOMNESS</div>
+            <h3>THE USELESS WEB</h3>
+
+            <p>
+                A button that transports you to random useless
+                websites. You never really know where you'll end up.
+            </p>
+
+            <p>A rabbit hole within a rabbit hole.</p>
+
+            <p>
+                <a href="https://theuselessweb.com/"
+                target="_blank" rel="noopener noreferrer">
+                    [ TAKE ME SOMEWHERE ]
+                </a>
+            </p>
+        </div>
+
+        <div class="oddity-card">
+            <span class="site-number">[010]</span>
+            <div class="site-category">DIGITAL ART / PIXELS</div>
+            <h3>KOALAS TO THE MAX</h3>
+
+            <p>
+                A giant collection of colored circles.
+                Keep clicking and splitting them to gradually
+                reveal a hidden image.
+            </p>
+
+            <p>Surprisingly satisfying.</p>
+
+            <p>
+                <a href="https://koalastothemax.com/"
+                target="_blank" rel="noopener noreferrer">
+                    [ REVEAL THE MYSTERY ]
+                </a>
+            </p>
+        </div>
+
+        <div class="oddity-card">
+            <span class="site-number">[011]</span>
+            <div class="site-category">INTERACTIVE / AUDIOVISUAL</div>
+            <h3>PATATAP</h3>
+
+            <p>
+                Press keys on your keyboard and trigger
+                different sounds and colorful animations.
+                Turn your keyboard into a tiny audiovisual
+                instrument.
+            </p>
+
+            <p>Your keyboard has become an instrument. XD</p>
+
+            <p>
+                <a href="https://patatap.com/"
+                target="_blank" rel="noopener noreferrer">
+                    [ START MAKING NOISE ]
+                </a>
+            </p>
+        </div>
+
+        <hr>
+
+        <center>
+            <p class="rainbow">
+                MORE ODDITIES WILL BE ADDED SOON!!!
+            </p>
+
+            <p style="font-size:12px">
+                Have you found something strange?
+                Keep exploring the internet.
+            </p>
+        </center>
+
+    </section>
+
+    <hr>
+
+    <!-- EXPERIMENTS -->
+
+    <section id="experiments">
+
+        <h2> RANDOM INTERNET EXPERIMENTS </h2>
+
+        <center>
+            <p>PRESS THE BUTTON TO EXPERIENCE SOMETHING.</p>
+
+            <button onclick="randomOddity()">
+                GENERATE RANDOM ODDITY
+            </button>
+
+            <div class="guest-entry" id="randomResult">
+                Awaiting experiment...
+            </div>
+
+            <br>
+
+            <button onclick="document.body.style.backgroundColor =
+            '#' + Math.floor(Math.random()*16777216)
+            .toString(16).padStart(6,'0')">
+                RANDOMIZE BACKGROUND
+            </button>
+
+            <button onclick="document.body.style.backgroundColor =
+            '#160044'">
+                RESTORE BACKGROUND
+            </button>
+        </center>
+
+        <hr>
+
+        <h3> THE OFFICIAL RANDOM NUMBER GENERATOR </h3>
+
+        <center>
+            <div id="number" style="font-size:40px;color:lime">
+                ???
+            </div>
+
+            <button onclick="document.getElementById('number')
+            .textContent=Math.floor(Math.random()*999999)">
+                GENERATE NUMBER
+            </button>
+        </center>
+
+    </section>
+
+    <hr>
+
+    <!-- N0IR HISTORICAL ARCHIVES -->
+
+    <section id="noir">
+
+        <div class="noir-panel">
+
+            <center>
+                <div class="noir-title">N0IR</div>
+
+                <p style="color:#aaaaaa;letter-spacing:3px">
+                    HISTORICAL ARCHIVES
+                </p>
+
+                <p class="noir-note">
+                    ARCHIVE REFERENCE: N0IR-HISTORY-001
+                </p>
+            </center>
+
+            <hr style="border-top:2px solid #777">
+
+            <h2>N0IR: A BRIEF HISTORY</h2>
+
+            <p>
+                N0IR is an organization with an unusually long
+                history. Its existence predates the digital age
+                by several centuries.
+            </p>
+
+            <p>
+                Although N0IR has existed since 1444, the
+                organization did not officially receive its
+                current name until 1946.
+            </p>
+
+            <p>
+                By 1950, N0IR had become an important influence
+                in the popularization of computers, helping
+                bring computing technology into the public eye.
+            </p>
+
+            <hr style="border-top:2px solid #777">
+
+            <h2>THE HISTORICAL TIMELINE</h2>
+
+            <div class="noir-timeline">
+
+                <div class="noir-event">
+                    <div class="noir-year">1444</div>
+
+                    <h3>THE FIRST APPEARANCE OF N0IR</h3>
+
+                    <p>
+                        N0IR canonically begins its existence.
+                        Its activities during this early period
+                        are associated with what would later be
+                        called the Duck Prevention Era.
+                    </p>
+
+                    <div class="noir-note">
+                        ARCHIVE STATUS: HISTORICALLY SIGNIFICANT
+                    </div>
+                </div>
+
+                <div class="noir-event">
+                    <div class="noir-year">1444-1949</div>
+
+                    <h3>THE DUCK PREVENTION ERA</h3>
+
+                    <p>
+                        The period before digital technology
+                        is known in N0IR's historical terminology
+                        as the Duck Prevention Era.
+                    </p>
+
+                    <p>
+                        The name is officially recognized by
+                        N0IR historians. Its terminology is
+                        considered an important part of the
+                        organization's historical records.
+                    </p>
+
+                    <div class="noir-note">
+                        PERIOD CLASSIFICATION: PRE-DIGITAL
+                    </div>
+                </div>
+
+                <div class="noir-event">
+                    <div class="noir-year">1946</div>
+
+                    <h3>THE OFFICIAL NAMING OF N0IR</h3>
+
+                    <p>
+                        N0IR officially receives its name.
+                        The year is a deliberate reference to
+                        the creation of the term "film noir".
+                    </p>
+
+                    <p>
+                        Despite receiving its name in 1946,
+                        the organization itself had already
+                        existed for centuries.
+                    </p>
+
+                    <div class="noir-note">
+                        NAMING EVENT: CONFIRMED
+                    </div>
+                </div>
+
+                <div class="noir-event">
+                    <div class="noir-year">1950</div>
+
+                    <h3>THE COMPUTER REVOLUTION</h3>
+
+                    <p>
+                        N0IR becomes an important organization
+                        due to its involvement in helping
+                        computers become popular.
+                    </p>
+
+                    <p>
+                        This marks a major turning point in
+                        N0IR's history and its influence on
+                        the development of the digital world.
+                    </p>
+
+                    <div class="noir-note">
+                        SIGNIFICANCE: MAJOR HISTORICAL MILESTONE
+                    </div>
+                </div>
+
+            </div>
+
+            <hr style="border-top:2px solid #777">
+
+            <h2>ARCHIVE FOOTNOTES</h2>
+
+            <p>
+                N0IR has existed since 1444, received its name
+                in 1946, and became influential in 1950.
+            </p>
+
+            <p>
+                These are three separate historical milestones.
+                They should not be confused with one another.
+            </p>
+
+            <p class="noir-note">
+                DOCUMENT MAINTAINED BY THE N0IR HISTORICAL
+                ARCHIVES.
+            </p>
+
+            <center>
+                <div style="color:#999;font-size:12px">
+                    N0IR ARCHIVES // END OF DOCUMENT
+                </div>
+            </center>
+
+        </div>
+
+    </section>
+
+    <hr>
+
+    <!-- GUESTBOOK -->
+
+    <section id="guestbook">
+
+        <h2> SIGN MY GUESTBOOK! </h2>
+
+        <p>
+            Leave a message for the next visitor!
+        </p>
+
+        <form id="guestForm">
+
+            <p>
+                Your name:<br>
+                <input id="guestName" maxlength="30"
+                placeholder="Anonymous" required>
+            </p>
+
+            <p>
+                Your message:<br>
+                <textarea id="guestMessage" rows="4"
+                maxlength="300"
+                style="width:100%" required></textarea>
+            </p>
+
+            <button type="submit">SIGN GUESTBOOK!</button>
+
+        </form>
+
+        <hr>
+
+        <h3> PREVIOUS VISITORS </h3>
+
+        <div id="guestEntries">
+            No entries yet. Be the first!
+        </div>
+
+        <button onclick="clearGuestbook()">
+            CLEAR LOCAL GUESTBOOK
+        </button>
+
+        <p style="font-size:11px">
+            Guestbook entries are stored locally in your browser.
+        </p>
+
+    </section>
+
+    <hr>
+
+    <!-- WEBRING -->
+
+    <section id="webring">
+
+        <h2> THE TOTALLY REAL WEBRING </h2>
+
+        <div style="
+            background:#550055;
+            border:3px dotted yellow;
+            padding:10px;
+            text-align:center;
+        ">
+
+            <p>*** YOU ARE CURRENTLY IN THE ODDITY WEBRING ***</p>
+
+            <button onclick="alert('There are no other websites. You are trapped here. Just kidding!')">
+                PREVIOUS SITE
+            </button>
+
+            <button onclick="alert('Next website is currently under construction!')">
+                NEXT SITE
+            </button>
+
+            <p>[ SITE #001 ]</p>
+
+        </div>
+
+    </section>
+
+    <hr>
+
+    <!-- N0IR DISCLAIMER -->
+
+    <div class="noir-disclaimer">
+
+        <b>!!! OFFICIAL N0IR DISCLAIMER !!!</b>
+
+        <hr style="border-top:2px dashed red">
+
+        We, at N0IR are not responsible to hearing damage,
+        neck pain, sudden fish appearing in your backyard,
+        Nloxguy stealing your lunch, and other things.
+
+        <p style="color:lime">
+            N0IR - ESTABLISHED 1444
+            <br>
+            OFFICIALLY NAMED IN 1946
+        </p>
+
+        <span class="blink">
+            [ YOU HAVE BEEN WARNED ]
+        </span>
+
+    </div>
+
+    <hr>
+
+    <center>
+        <h2 class="rainbow">THANKS FOR VISITING!!!</h2>
+
+        <p>Come back soon! ^_^</p>
+
+        <div style="font-size:25px">
+            *~*~*~*~*~*
+        </div>
+    </center>
+
+</main>
+</div>
+
+<!-- FOOTER -->
+
+<footer>
+
+    <p>BLUEYFAN'S DIGITAL ODDITY REQUIEM</p>
+
+    <p>Copyright &copy; 2002-2026 Blueyfan</p>
+
+    <p>Best viewed with Netscape Navigator 4.0</p>
+
+    <p>
+        <span class="rainbow">
+            YOU ARE THE 100% AUTHENTIC VISITOR!
+        </span>
+    </p>
+
+    <p><a href="#home">BACK TO TOP</a></p>
+
+    <p style="font-size:11px">
+        This website is not responsible for lost floppy disks,
+        confused visitors, or unexplained internet phenomena.
+    </p>
+
+    <p style="font-size:11px;color:#888">
+        IN ASSOCIATION WITH N0IR
+    </p>
+
+</footer>
+
+<script>
+
+// VISITOR COUNTER
+
+let visits = Number(localStorage.getItem("oddityVisits") || 0);
+visits++;
+
+localStorage.setItem("oddityVisits", visits);
+
+document.getElementById("counter").textContent =
+String(visits).padStart(6, "0");
+
+
+// CLOCK
+
+function updateClock() {
+    document.getElementById("clock").textContent =
+    new Date().toLocaleTimeString();
+}
+
+updateClock();
+setInterval(updateClock, 1000);
+
+
+// RANDOM ODDITY GENERATOR
+
+const oddities = [
+    "A mysterious noise has been detected in the floppy drive.",
+    "The website has achieved consciousness. It wants a sandwich.",
+    "You have discovered a secret portal to absolutely nowhere.",
+    "A computer somewhere has just sneezed.",
+    "ERROR 2002: TOO MUCH INTERNET.",
+    "A suspiciously large duck has entered the database.",
+    "The server is currently thinking about its life choices.",
+    "You have unlocked absolutely nothing. Congratulations!",
+    "The moon has been replaced with a JPEG.",
+    "A forgotten Windows 98 computer is calling you.",
+    "There are 47 invisible cats in this webpage.",
+    "Your browser has been blessed by the ancient internet gods.",
+    "The fish incident has been reopened.",
+    "Somewhere, a dial-up modem is screaming.",
+    "The prophecy of the dancing cursor has begun.",
+    "N0IR has denied all involvement.",
+    "A duck has been spotted near the computer laboratory.",
+    "Your lunch has been reported missing. Contact N0IR.",
+    "The Duck Prevention archives have been accessed.",
+    "A suspicious floppy disk has appeared in the archives."
+];
+
+function randomOddity() {
+    const result = oddities[
+        Math.floor(Math.random() * oddities.length)
+    ];
+
+    document.getElementById("randomResult").textContent = result;
+}
+
+
+// GUESTBOOK
+
+function displayGuestbook() {
+
+    const entries = JSON.parse(
+        localStorage.getItem("oddityGuestbook") || "[]"
+    );
+
+    const container = document.getElementById("guestEntries");
+    container.replaceChildren();
+
+    if (entries.length === 0) {
+        container.textContent = "No entries yet. Be the first!";
+        return;
+    }
+
+    entries.forEach(entry => {
+
+        const div = document.createElement("div");
+        div.className = "guest-entry";
+
+        const name = document.createElement("b");
+        name.textContent = entry.name;
+
+        const message = document.createElement("p");
+        message.textContent = entry.message;
+
+        const date = document.createElement("small");
+        date.textContent = entry.date;
+
+        div.append(name, message, date);
+        container.appendChild(div);
+
+    });
+}
+
+document.getElementById("guestForm").addEventListener(
+    "submit",
+    function(event) {
+
+        event.preventDefault();
+
+        const name = document.getElementById("guestName")
+            .value.trim();
+
+        const message = document.getElementById("guestMessage")
+            .value.trim();
+
+        if (!name || !message) return;
+
+        const entries = JSON.parse(
+            localStorage.getItem("oddityGuestbook") || "[]"
+        );
+
+        entries.unshift({
+            name: name,
+            message: message,
+            date: new Date().toLocaleString()
+        });
+
+        localStorage.setItem(
+            "oddityGuestbook",
+            JSON.stringify(entries.slice(0, 50))
+        );
+
+        this.reset();
+        displayGuestbook();
+
+    }
+);
+
+function clearGuestbook() {
+
+    if (confirm("Are you sure you want to erase the guestbook?")) {
+
+        localStorage.removeItem("oddityGuestbook");
+        displayGuestbook();
+
+    }
+
+}
+
+displayGuestbook();
+
+</script>
+
 </body>
 </html>
