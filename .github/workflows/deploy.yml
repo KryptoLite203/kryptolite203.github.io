@@ -194,32 +194,41 @@ jobs:
                           // Purple Hidden Blocks category: expose legacy/less-visible VM primitives.
                           if (!manager.isExtensionLoaded('hiddenBlocks')) {
                               const hiddenDefinitions = [
-                                  ['username','reporter','username','sensing_username'],
-                                  ['userId','reporter','user id','sensing_userid'],
-                                  ['daysSince2000','reporter','days since 2000','sensing_dayssince2000'],
-                                  ['currentDate','reporter','current date/time','sensing_current'],
-                                  ['loudness','reporter','loudness','sensing_loudness'],
-                                  ['timer','reporter','timer','sensing_timer'],
-                                  ['mouseX','reporter','mouse x','sensing_mousex'],
-                                  ['mouseY','reporter','mouse y','sensing_mousey'],
-                                  ['mouseDown','boolean','mouse down?','sensing_mousedown'],
-                                  ['answer','reporter','answer','sensing_answer'],
-                                  ['resetTimer','command','reset timer','sensing_resettimer'],
-                                  ['xScroll','reporter','x scroll','motion_xscroll'],
-                                  ['yScroll','reporter','y scroll','motion_yscroll'],
-                                  ['hideAllSprites','command','hide all sprites','looks_hideallsprites']
+                                  {opcode:'username', type:'reporter', text:'username', primitive:'sensing_username'},
+                                  {opcode:'userId', type:'reporter', text:'user id', primitive:'sensing_userid'},
+                                  {opcode:'daysSince2000', type:'reporter', text:'days since 2000', primitive:'sensing_dayssince2000'},
+                                  {opcode:'currentDate', type:'reporter', text:'current date/time', primitive:'sensing_current'},
+                                  {opcode:'loudness', type:'reporter', text:'loudness', primitive:'sensing_loudness'},
+                                  {opcode:'timer', type:'reporter', text:'timer', primitive:'sensing_timer'},
+                                  {opcode:'mouseX', type:'reporter', text:'mouse x', primitive:'sensing_mousex'},
+                                  {opcode:'mouseY', type:'reporter', text:'mouse y', primitive:'sensing_mousey'},
+                                  {opcode:'mouseDown', type:'boolean', text:'mouse down?', primitive:'sensing_mousedown'},
+                                  {opcode:'answer', type:'reporter', text:'answer', primitive:'sensing_answer'},
+                                  {opcode:'resetTimer', type:'command', text:'reset timer', primitive:'sensing_resettimer'},
+                                  {opcode:'xScroll', type:'reporter', text:'x scroll', primitive:'motion_xscroll'},
+                                  {opcode:'yScroll', type:'reporter', text:'y scroll', primitive:'motion_yscroll'},
+                                  {opcode:'scrollRight', type:'command', text:'scroll right [STEPS]', primitive:'motion_scroll_right', arguments:{STEPS:{type:'number',defaultValue:10}}},
+                                  {opcode:'scrollUp', type:'command', text:'scroll up [STEPS]', primitive:'motion_scroll_up', arguments:{STEPS:{type:'number',defaultValue:10}}},
+                                  {opcode:'alignScene', type:'command', text:'align scene', primitive:'motion_align_scene'},
+                                  {opcode:'hideAllSprites', type:'command', text:'hide all sprites', primitive:'looks_hideallsprites'},
+                                  {opcode:'setStretchTo', type:'command', text:'set stretch to [STRETCH]', primitive:'looks_setstretchto', arguments:{STRETCH:{type:'number',defaultValue:100}}},
+                                  {opcode:'changeStretchBy', type:'command', text:'change stretch by [CHANGE]', primitive:'looks_changestretchby', arguments:{CHANGE:{type:'number',defaultValue:10}}},
+                                  {opcode:'whenTouchingObject', type:'hat', text:'when touching [TOUCHINGOBJECTMENU]', primitive:'event_whentouchingobject', arguments:{TOUCHINGOBJECTMENU:{type:'string',menu:'touchingObjectMenu'}}},
+                                  {opcode:'touchingObjectMenu', type:'reporter', text:'[TOUCHINGOBJECTMENU]', primitive:'event_touchingobjectmenu', arguments:{TOUCHINGOBJECTMENU:{type:'string',menu:'touchingObjectMenu'}}},
+                                  {opcode:'forEach', type:'command', text:'for each [VARIABLE] from [START] to [END]', primitive:'control_for_each', arguments:{VARIABLE:{type:'string',defaultValue:'i'},START:{type:'number',defaultValue:1},END:{type:'number',defaultValue:10}}}
                               ];
                               class HiddenBlocks {
                                   constructor(runtime) { this.runtime = runtime; }
                                   getInfo() {
-                                      return {id:'hiddenBlocks', name:'Hidden Blocks', color1:'#7b2cbf', color2:'#64209e', color3:'#4b1678',
-                                          blocks:hiddenDefinitions.map(([opcode,type,label]) => ({opcode, blockType:type, text:label}))};
+                                      return {id:'hiddenBlocks', name:'Hidden Blocks', color1:'#5B168A', color2:'#45106D', color3:'#30084D',
+                                          menus:{touchingObjectMenu:{acceptReporters:true,items:['mouse-pointer','edge','_myself_']}},
+                                          blocks:hiddenDefinitions.map(({opcode,type,text,arguments:args}) => ({opcode, blockType:type, text, ...(args ? {arguments:args} : {})}))};
                                   }
                               }
-                              hiddenDefinitions.forEach(([opcode, type, label, primitive]) => {
+                              hiddenDefinitions.forEach(({opcode, type, primitive}) => {
                                   HiddenBlocks.prototype[opcode] = function(args, util) {
                                       const fn = this.runtime._primitives && this.runtime._primitives[primitive];
-                                      if (typeof fn !== 'function') return type === 'command' ? undefined : '';
+                                      if (typeof fn !== 'function') return type === 'command' || type === 'hat' ? undefined : '';
                                       return fn(args || {}, util);
                                   };
                               });
