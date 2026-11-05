@@ -44,6 +44,192 @@ jobs:
         working-directory: scratch-gui-src
         run: npm ci
 
+      - name: Add Hex and Opacity controls to the Paint editor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          
+          root = Path('scratch-gui-src')
+          candidates = [
+              root / 'node_modules/scratch-paint/src',
+              root / 'node_modules/@scratch/scratch-paint/src'
+          ]
+          paint = next((candidate for candidate in candidates if candidate.is_dir()), None)
+          if paint is None:
+              raise RuntimeError('Could not find the installed scratch-paint source package')
+          
+          component_file = paint / 'components/color-picker/color-picker.jsx'
+          container_file = paint / 'containers/color-picker.jsx'
+          component = component_file.read_text(encoding='utf-8')
+          container = container_file.read_text(encoding='utf-8')
+          
+          # Add a hex field and an opacity slider to the existing color picker.
+          render_anchor = """    render () {
+                  return (
+                      <div
+                          className={styles.colorPickerContainer}"""
+          if 'aria-label="Hex color"' not in component:
+              if render_anchor not in component:
+                  raise RuntimeError('Could not locate the Paint color picker render method')
+              replacement = """    render () {
+                  const selectedColor = this.props.colorIndex === 0 ? this.props.color : this.props.color2;
+                  const hexValue = selectedColor && selectedColor !== MIXED ? parseColor(selectedColor).hex : '#000000';
+                  return (
+                      <div
+                          className={styles.colorPickerContainer}"""
+              component = component.replace(render_anchor, replacement, 1)
+          
+          slider_anchor = """                <div className={styles.swatchRow}>
+          """
+          if 'aria-label="Hex color"' not in component:
+              if slider_anchor not in component:
+                  raise RuntimeError('Could not locate the Paint color picker swatch row')
+              controls = """                <div className={styles.row}>
+                              <div className={styles.rowHeader}>
+                                  <span className={styles.labelName}>Hex</span>
+                              </div>
+                              <input
+                                  key={hexValue}
+                                  aria-label="Hex color"
+                                  type="text"
+                                  defaultValue={hexValue}
+                                  spellCheck={false}
+                                  onBlur={event => {
+                                      const value = event.target.value.trim();
+                                      if (/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) {
+                                          this.props.onChangeHex(value);
+                                      } else {
+                                          event.target.value = hexValue;
+                                      }
+                                  }}
+                                  onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+                                  style={{width: '100%', boxSizing: 'border-box', padding: '6px 8px', border: '1px solid #c9ced6', borderRadius: '5px', color: '#575e75', fontSize: '12px'}}
+                              />
+                          </div>
+                          <div className={styles.row}>
+                              <div className={styles.rowHeader}>
+                                  <span className={styles.labelName}>Opacity</span>
+                                  <span className={styles.labelReadout}>{Math.round(this.props.opacity)}%</span>
+                              </div>
+                              <input
+                                  aria-label="Color opacity"
+                                  type="range"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  value={this.props.opacity}
+                                  onChange={event => this.props.onOpacityChange(Number(event.target.value))}
+                                  style={{width: '100%', accentColor: '#4c97ff'}}
+                              />
+                          </div>
+          """
+              component = component.replace(slider_anchor, controls + slider_anchor, 1)
+          
+          prop_anchor = '    brightness: PropTypes.number.isRequired,\n'
+          if 'onOpacityChange: PropTypes.func.isRequired' not in component:
+              if prop_anchor not in component:
+                  raise RuntimeError('Could not locate Paint color picker propTypes')
+              component = component.replace(prop_anchor, prop_anchor + '''    opacity: PropTypes.number.isRequired,
+              onChangeHex: PropTypes.func.isRequired,
+              onOpacityChange: PropTypes.func.isRequired,
+          ''', 1)
+          component_file.write_text(component, encoding='utf-8')
+          
+          # Preserve alpha in Paper.js color values while editing hue/saturation/brightness.
+          bind_anchor = "            'handleBrightnessChange',\n"
+          if "'handleOpacityChange'" not in container:
+              if bind_anchor not in container:
+                  raise RuntimeError('Could not locate Paint color picker event bindings')
+              container = container.replace(bind_anchor, bind_anchor + "            'handleOpacityChange',\n            'handleHexChange',\n", 1)
+          
+          state_anchor = """        this.state = {
+                      hue: hsv[0],
+                      saturation: hsv[1],
+                      brightness: hsv[2]
+                  };
+          """
+          if 'opacity: this.getOpacity(color)' not in container:
+              if state_anchor not in container:
+                  raise RuntimeError('Could not locate Paint color picker initial state')
+              container = container.replace(state_anchor, """        this.state = {
+                      hue: hsv[0],
+                      saturation: hsv[1],
+                      brightness: hsv[2],
+                      opacity: this.getOpacity(color)
+                  };
+          """, 1)
+          
+          method_anchor = '    handleHueChange (hue) {\n'
+          if 'getOpacity (color)' not in container:
+              if method_anchor not in container:
+                  raise RuntimeError('Could not locate Paint color picker handlers')
+              methods = """    getOpacity (color) {
+                  if (color === null) return 0;
+                  if (!color || color === MIXED) return 100;
+                  const rgba = parseColor(color).rgba;
+                  return rgba && rgba.length > 3 ? Math.max(0, Math.min(100, rgba[3] * 100)) : 100;
+              }
+              handleOpacityChange (opacity) {
+                  this.setState({opacity: opacity}, () => this.handleColorChange());
+              }
+              handleHexChange (hex) {
+                  const hsv = colorStringToHsv(hex);
+                  this.setState({hue: hsv[0], saturation: hsv[1], brightness: hsv[2]}, () => this.handleColorChange());
+              }
+          """
+              container = container.replace(method_anchor, methods + method_anchor, 1)
+          
+          old_color_change = """    handleColorChange () {
+                  this.props.onChangeColor(hsvToHex(
+                      this.state.hue,
+                      this.state.saturation,
+                      this.state.brightness
+                  ));
+              }
+          """
+          new_color_change = """    handleColorChange () {
+                  const hex = hsvToHex(this.state.hue, this.state.saturation, this.state.brightness);
+                  const rgb = parseColor(hex).rgb;
+                  const color = this.state.opacity >= 100 ? hex : `rgba(${rgb.join(', ')}, ${this.state.opacity / 100})`;
+                  this.props.onChangeColor(color);
+              }
+          """
+          if old_color_change in container:
+              container = container.replace(old_color_change, new_color_change, 1)
+          elif new_color_change not in container:
+              raise RuntimeError('Could not locate Paint color-change handler')
+          
+          receive_anchor = """            this.setState({
+                          hue: hsv[0],
+                          saturation: hsv[1],
+                          brightness: hsv[2]
+                      });
+          """
+          if 'opacity: this.getOpacity(newColor)' not in container:
+              if receive_anchor not in container:
+                  raise RuntimeError('Could not locate Paint color picker prop synchronization')
+              container = container.replace(receive_anchor, """            this.setState({
+                          hue: hsv[0],
+                          saturation: hsv[1],
+                          brightness: hsv[2],
+                          opacity: this.getOpacity(newColor)
+                      });
+          """, 1)
+          
+          render_props_anchor = '                brightness={this.state.brightness}\n'
+          if 'onOpacityChange={this.handleOpacityChange}' not in container:
+              if render_props_anchor not in container:
+                  raise RuntimeError('Could not locate Paint color picker component props')
+              container = container.replace(render_props_anchor, render_props_anchor + '                opacity={this.state.opacity}\n', 1)
+              callback_anchor = '                onBrightnessChange={this.handleBrightnessChange}\n'
+              if callback_anchor not in container:
+                  raise RuntimeError('Could not locate Paint color picker callback props')
+              container = container.replace(callback_anchor, callback_anchor + '                onChangeHex={this.handleHexChange}\n                onOpacityChange={this.handleOpacityChange}\n', 1)
+          
+          container_file.write_text(container, encoding='utf-8')
+          print('Installed Hex color entry and alpha/opacity slider in Scratch Paint.')
+          PY
+
       - name: Apply KryptoLite customizations
         run: |
           python3 - <<'PY'
@@ -166,7 +352,8 @@ jobs:
                                               text: 'block of endless suffering and despair'},
                                           {opcode: 'fleshBlock', blockType: 'command',
                                               text: '2x2 Pulsating Block Of Flesh'},
-                                          {opcode: 'revertAll', blockType: 'command', text: 'Revert All'}
+                                          {opcode: 'revertAll', blockType: 'command', text: 'Revert All'},
+                                          {opcode: 'mouseDown', blockType: 'boolean', text: 'mouse down?'}
                                       ]
                                   };
                               }
@@ -187,6 +374,10 @@ jobs:
                               revertAll() {
                                   window.dispatchEvent(new Event('krypto-revert-all'));
                               }
+                              mouseDown(args, util) {
+                                  const fn = this.runtime._primitives && this.runtime._primitives.sensing_mousedown;
+                                  return typeof fn === 'function' ? fn(args || {}, util) : false;
+                              }
                           }
                           const serviceName = manager._registerInternalExtension(new KryptoLiteBlocks(this.props.vm.runtime));
                           manager._loadedExtensions.set('kryptoLite', serviceName);
@@ -194,17 +385,6 @@ jobs:
                           // Purple Hidden Blocks category: expose legacy/less-visible VM primitives.
                           if (!manager.isExtensionLoaded('hiddenBlocks')) {
                               const hiddenDefinitions = [
-                                  {opcode:'username', type:'reporter', text:'username', primitive:'sensing_username'},
-                                  {opcode:'userId', type:'reporter', text:'user id', primitive:'sensing_userid'},
-                                  {opcode:'daysSince2000', type:'reporter', text:'days since 2000', primitive:'sensing_dayssince2000'},
-                                  {opcode:'currentDate', type:'reporter', text:'current date/time', primitive:'sensing_current'},
-                                  {opcode:'loudness', type:'reporter', text:'loudness', primitive:'sensing_loudness'},
-                                  {opcode:'timer', type:'reporter', text:'timer', primitive:'sensing_timer'},
-                                  {opcode:'mouseX', type:'reporter', text:'mouse x', primitive:'sensing_mousex'},
-                                  {opcode:'mouseY', type:'reporter', text:'mouse y', primitive:'sensing_mousey'},
-                                  {opcode:'mouseDown', type:'boolean', text:'mouse down?', primitive:'sensing_mousedown'},
-                                  {opcode:'answer', type:'reporter', text:'answer', primitive:'sensing_answer'},
-                                  {opcode:'resetTimer', type:'command', text:'reset timer', primitive:'sensing_resettimer'},
                                   {opcode:'xScroll', type:'reporter', text:'x scroll', primitive:'motion_xscroll'},
                                   {opcode:'yScroll', type:'reporter', text:'y scroll', primitive:'motion_yscroll'},
                                   {opcode:'scrollRight', type:'command', text:'scroll right [STEPS]', primitive:'motion_scroll_right', arguments:{STEPS:{type:'number',defaultValue:10}}},
@@ -220,6 +400,8 @@ jobs:
                               class HiddenBlocks {
                                   constructor(runtime) { this.runtime = runtime; }
                                   getInfo() {
+                                      // Keep this palette distinct from the red Zany Blocks palette.
+                                      // Scratch derives its High Contrast palette from these category colors.
                                       return {id:'hiddenBlocks', name:'Hidden Blocks', color1:'#5B168A', color2:'#45106D', color3:'#30084D',
                                           menus:{touchingObjectMenu:{acceptReporters:true,items:['mouse-pointer','edge','_myself_']}},
                                           blocks:hiddenDefinitions.map(({opcode,type,text,arguments:args}) => ({opcode, blockType:type, text, ...(args ? {arguments:args} : {})}))};
