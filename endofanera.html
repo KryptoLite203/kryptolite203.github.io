@@ -1,0 +1,168 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Credits - Blueyfan's Digital Oddity Requiem</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+}
+
+body {
+    font-family: "Courier New", monospace;
+}
+
+#credits {
+    position: absolute;
+    top: 100vh;
+    left: 0;
+    width: 100%;
+    padding: 0 15px;
+    text-align: center;
+    animation: scrollCredits 90s linear forwards;
+}
+
+.credit {
+    margin-bottom: 110px;
+}
+
+h1 {
+    font-size: 30px;
+    letter-spacing: 5px;
+}
+
+h2 {
+    font-size: 15px;
+    letter-spacing: 4px;
+    color: #888;
+}
+
+p {
+    font-size: 19px;
+    line-height: 1.8;
+}
+
+.small {
+    font-size: 12px;
+    color: #666;
+}
+
+@keyframes scrollCredits {
+    from {
+        top: 100vh;
+    }
+
+    to {
+        top: -1800px;
+    }
+}
+
+@media (max-width: 600px) {
+    h1 {
+        font-size: 22px;
+    }
+
+    h2 {
+        font-size: 13px;
+    }
+
+    p {
+        font-size: 16px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- CREDITS -->
+
+<div id="credits">
+
+    <div class="credit">
+        <h1>BLUEYFAN'S DIGITAL ODDITY REQUIEM</h1>
+        <p class="small">A WEBSITE BY BLUEYFAN</p>
+    </div>
+
+    <div class="credit">
+        <h2>CREATED BY</h2>
+        <p>Blueyfan</p>
+    </div>
+
+    <div class="credit">
+        <h2>FEATURING</h2>
+        <p>The Oddities</p>
+        <p>The Archives</p>
+        <p>The Experiments</p>
+        <p>The Guestbook</p>
+    </div>
+
+    <div class="credit">
+        <h2>THE N0IR ARCHIVES</h2>
+        <p>Established in 1444</p>
+        <p>Named in 1946</p>
+        <p>Computer Popularization in 1950</p>
+    </div>
+
+    <div class="credit">
+        <h2>SPECIAL THANKS</h2>
+        <p>To everyone who visited.</p>
+        <p>To the forgotten websites.</p>
+        <p>To the people who kept the internet weird.</p>
+    </div>
+
+    <div class="credit">
+        <h2>ONE LAST THING</h2>
+        <p>There was never supposed to be an ending.</p>
+    </div>
+
+    <div class="credit">
+        <h1>THANK YOU FOR VISITING.</h1>
+        <p class="small">END OF TRANSMISSION</p>
+    </div>
+
+</div>
+
+<!-- CREDITS MUSIC -->
+
+<audio id="creditsMusic" autoplay loop>
+    <source src="credits.mp3" type="audio/mpeg">
+    Your browser does not support audio.
+</audio>
+
+<script>
+const music = document.getElementById("creditsMusic");
+
+music.volume = 0.5;
+
+// Attempt autoplay.
+music.play().catch(() => {
+    // Browsers may block autoplay until visitor interaction.
+});
+
+// Start music after first interaction if autoplay was blocked.
+function startMusic() {
+    music.play().catch(error => {
+        console.warn("Credits music could not start:", error);
+    });
+}
+
+document.addEventListener("click", startMusic, { once: true });
+document.addEventListener("keydown", startMusic, { once: true });
+</script>
+
+</body>
+</html>
