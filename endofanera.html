@@ -7,6 +7,10 @@
 
 <title>SHUTDOWN - Digital Oddity Requiem</title>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet">
+
 <style>
 * {
     box-sizing: border-box;
@@ -19,7 +23,7 @@ html, body {
     background: black;
     color: white;
     overflow: hidden;
-    font-family: "Courier New", monospace;
+    font-family: "Silkscreen", monospace;
 }
 
 /* START SCREEN */
@@ -39,10 +43,9 @@ html, body {
     background: black;
     color: #ccc;
     border: 1px solid #777;
-    padding: 14px 35px;
-    font-family: "Courier New", monospace;
-    font-size: 16px;
-    letter-spacing: 3px;
+    padding: 14px 25px;
+    font-family: "Silkscreen", monospace;
+    font-size: 14px;
     cursor: pointer;
 }
 
@@ -55,7 +58,8 @@ html, body {
 #startScreen p {
     margin-top: 25px;
     color: #444;
-    font-size: 11px;
+    font-size: 9px;
+    text-align: center;
 }
 
 /* CREDITS */
@@ -80,23 +84,22 @@ html, body {
 }
 
 h1 {
-    font-size: 30px;
-    letter-spacing: 5px;
+    font-size: 23px;
+    line-height: 1.8;
 }
 
 h2 {
-    font-size: 15px;
-    letter-spacing: 4px;
+    font-size: 13px;
     color: #888;
 }
 
 p {
-    font-size: 19px;
-    line-height: 1.8;
+    font-size: 13px;
+    line-height: 2.2;
 }
 
 .small {
-    font-size: 12px;
+    font-size: 9px;
     color: #666;
 }
 
@@ -112,15 +115,15 @@ p {
 
 @media (max-width: 600px) {
     h1 {
-        font-size: 22px;
+        font-size: 16px;
     }
 
     h2 {
-        font-size: 13px;
+        font-size: 11px;
     }
 
     p {
-        font-size: 16px;
+        font-size: 10px;
     }
 }
 </style>
@@ -185,9 +188,7 @@ p {
 
 <!-- MUSIC -->
 
-<audio id="creditsMusic" loop>
-    <source src="credits.mp3" type="audio/mpeg">
-</audio>
+<audio id="creditsMusic" src="credits.mp3" preload="auto" loop></audio>
 
 <script>
 const button = document.getElementById("shutdownButton");
@@ -197,21 +198,24 @@ const music = document.getElementById("creditsMusic");
 
 let started = false;
 
-button.addEventListener("click", function() {
+button.addEventListener("click", async function() {
     if (started) return;
     started = true;
+
+    // Start music directly from the button interaction.
+    music.volume = 0.5;
+
+    try {
+        await music.play();
+    } catch (error) {
+        console.error("Credits music failed to play:", error);
+    }
 
     // Hide shutdown screen.
     startScreen.style.display = "none";
 
-    // Start scrolling credits.
+    // Begin credits.
     credits.classList.add("scrolling");
-
-    // Start credits soundtrack.
-    music.volume = 0.5;
-    music.play().catch(error => {
-        console.warn("Could not play credits.mp3:", error);
-    });
 });
 </script>
 
