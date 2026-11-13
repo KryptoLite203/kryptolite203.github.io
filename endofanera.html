@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Credits - Blueyfan's Digital Oddity Requiem</title>
+<title>SHUTDOWN - Digital Oddity Requiem</title>
 
 <style>
 * {
@@ -16,14 +16,49 @@ html, body {
     margin: 0;
     width: 100%;
     height: 100%;
-    background: #000;
-    color: #fff;
+    background: black;
+    color: white;
     overflow: hidden;
-}
-
-body {
     font-family: "Courier New", monospace;
 }
+
+/* START SCREEN */
+
+#startScreen {
+    position: fixed;
+    inset: 0;
+    background: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 10;
+}
+
+#shutdownButton {
+    background: black;
+    color: #ccc;
+    border: 1px solid #777;
+    padding: 14px 35px;
+    font-family: "Courier New", monospace;
+    font-size: 16px;
+    letter-spacing: 3px;
+    cursor: pointer;
+}
+
+#shutdownButton:hover {
+    color: white;
+    border-color: white;
+    background: #111;
+}
+
+#startScreen p {
+    margin-top: 25px;
+    color: #444;
+    font-size: 11px;
+}
+
+/* CREDITS */
 
 #credits {
     position: absolute;
@@ -32,6 +67,11 @@ body {
     width: 100%;
     padding: 0 15px;
     text-align: center;
+    visibility: hidden;
+}
+
+#credits.scrolling {
+    visibility: visible;
     animation: scrollCredits 90s linear forwards;
 }
 
@@ -88,6 +128,13 @@ p {
 
 <body>
 
+<!-- SHUTDOWN SCREEN -->
+
+<div id="startScreen">
+    <button id="shutdownButton">SHUTDOWN /S</button>
+    <p>BLUEYFAN'S DIGITAL ODDITY REQUIEM</p>
+</div>
+
 <!-- CREDITS -->
 
 <div id="credits">
@@ -136,32 +183,36 @@ p {
 
 </div>
 
-<!-- CREDITS MUSIC -->
+<!-- MUSIC -->
 
-<audio id="creditsMusic" autoplay loop>
+<audio id="creditsMusic" loop>
     <source src="credits.mp3" type="audio/mpeg">
-    Your browser does not support audio.
 </audio>
 
 <script>
+const button = document.getElementById("shutdownButton");
+const startScreen = document.getElementById("startScreen");
+const credits = document.getElementById("credits");
 const music = document.getElementById("creditsMusic");
 
-music.volume = 0.5;
+let started = false;
 
-// Attempt autoplay.
-music.play().catch(() => {
-    // Browsers may block autoplay until visitor interaction.
-});
+button.addEventListener("click", function() {
+    if (started) return;
+    started = true;
 
-// Start music after first interaction if autoplay was blocked.
-function startMusic() {
+    // Hide shutdown screen.
+    startScreen.style.display = "none";
+
+    // Start scrolling credits.
+    credits.classList.add("scrolling");
+
+    // Start credits soundtrack.
+    music.volume = 0.5;
     music.play().catch(error => {
-        console.warn("Credits music could not start:", error);
+        console.warn("Could not play credits.mp3:", error);
     });
-}
-
-document.addEventListener("click", startMusic, { once: true });
-document.addEventListener("keydown", startMusic, { once: true });
+});
 </script>
 
 </body>
