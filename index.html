@@ -140,10 +140,80 @@ body.abandoned-hover #abandoned-darkness {
     visibility: visible;
 }
 
+
+/* ONE-TIME CONTENT WARNING */
+#content-warning {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.96);
+    color: #ffffcc;
+    font-family: Arimo, Arial, sans-serif;
+}
+#content-warning[hidden] { display: none; }
+#content-warning .warning-panel {
+    width: 100%;
+    max-width: 620px;
+    padding: 25px;
+    text-align: center;
+    background: #190d28;
+    border: 4px ridge #ff3333;
+    box-shadow: 0 0 22px rgba(255, 0, 0, 0.35);
+}
+#content-warning h2 { color: #ff6666; margin-top: 0; }
+#content-warning p { line-height: 1.6; }
+#content-warning button {
+    margin-top: 12px;
+    padding: 11px 22px;
+    border: 2px outset #bb66dd;
+    background: #351347;
+    color: #ffffcc;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+}
+#content-warning button:hover { background: #660066; color: yellow; }
+
 </style>
 </head>
 
 <body>
+<div id="content-warning" role="dialog" aria-modal="true" aria-labelledby="warning-title">
+    <div class="warning-panel">
+        <h2 id="warning-title">BEFORE YOU ENTER...</h2>
+        <p>This site contains loud audio, flashing lights, and disturbing imagery that is not limited to gore (not real gore though eaugh icky)</p>
+        <p>Please continue only if you're comfortable with that content.</p>
+        <button type="button" id="warning-continue">I UNDERSTAND - ENTER SITE</button>
+    </div>
+</div>
+<script>
+(function () {
+    const warning = document.getElementById('content-warning');
+    const continueButton = document.getElementById('warning-continue');
+    const warningKey = 'digitalOddityWarningAccepted';
+
+    try {
+        if (localStorage.getItem(warningKey) === 'yes') {
+            warning.hidden = true;
+        }
+    } catch (error) {
+        // If storage is unavailable, show the warning on each visit.
+    }
+
+    continueButton.addEventListener('click', function () {
+        try {
+            localStorage.setItem(warningKey, 'yes');
+        } catch (error) {
+            // The visitor can still enter if storage is unavailable.
+        }
+        warning.hidden = true;
+    });
+})();
+</script>
 <div class="main">
 
 <div class="header">
@@ -401,6 +471,22 @@ document.getElementById("guestForm").addEventListener("submit", event => {
     displayEntries();
 });
 displayEntries();
+</script>
+
+<script>
+(function () {
+    const link = document.getElementById('abandoned-link');
+    if (!link) return;
+
+    // Grant access only in this tab, and only after the abandoned link is clicked.
+    link.addEventListener('click', function () {
+        try {
+            sessionStorage.setItem('terminal_access', 'granted');
+        } catch (error) {
+            console.warn('Could not save terminal entry pass:', error);
+        }
+    });
+})();
 </script>
 
 <script>
