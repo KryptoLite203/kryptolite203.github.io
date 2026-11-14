@@ -1,11 +1,10 @@
-
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#2f80c9">
-  <title>404 - Blueyfans Rather Odd Scratch Editor Of Zany Mystery</title>
+  <title>404 - Blueyfan's Digital Oddity Requiem</title>
 
   <style>
     * {
@@ -15,89 +14,75 @@
     body {
       margin: 0;
       min-height: 100vh;
-      padding: 35px 16px;
+      padding: 25px;
+      background: #000;
+      color: #00ff00;
+      font-family: "Courier New", monospace;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #d9efff;
-      color: #24384b;
-      font-family: "Comic Sans MS", "Comic Sans", cursive;
+      text-align: center;
     }
 
     main {
       width: 100%;
-      max-width: 720px;
-      padding: 38px 30px 32px;
-      text-align: center;
-      background: #ffffff;
-      border: 3px solid #75b8e8;
-      border-radius: 12px;
-      box-shadow: 5px 6px 0 #a9d5f2;
+      max-width: 700px;
+      border: 2px solid #00ff00;
+      padding: 35px 25px;
+      background: #050505;
+      box-shadow: 0 0 15px #003b00;
     }
 
     h1 {
-      margin: 0 auto 18px;
-      color: #246eae;
-      font-size: clamp(55px, 10vw, 85px);
-      line-height: 1.18;
+      font-size: clamp(65px, 12vw, 100px);
+      margin: 0;
+      color: #00ff00;
+      text-shadow: 0 0 12px #00ff00;
     }
 
     h2 {
-      color: #246eae;
-      margin: 0 0 18px;
-      font-size: 25px;
+      font-size: 24px;
+      color: #00ff00;
     }
 
-    .subtitle {
-      max-width: 510px;
-      margin: 0 auto 28px;
-      color: #526b7e;
-      font-size: 17px;
-      line-height: 1.5;
+    p {
+      color: #aaffaa;
+      line-height: 1.7;
     }
 
-    .launch {
+    .warning {
+      color: #ff4444;
+      margin: 25px 0;
+    }
+
+    a {
       display: inline-block;
-      padding: 13px 25px;
-      border: 2px solid #1e659f;
-      border-radius: 8px;
-      background: #398bd0;
-      color: white;
-      font-size: 18px;
-      font-weight: bold;
+      margin-top: 15px;
+      padding: 12px 20px;
+      border: 1px solid #00ff00;
+      color: #00ff00;
       text-decoration: none;
-      box-shadow: 0 4px 0 #1e659f;
-      transition: background-color 120ms ease,
-                  transform 120ms ease,
-                  box-shadow 120ms ease;
+      background: #001000;
     }
 
-    .launch:hover {
-      background: #2679bd;
-      transform: translateY(2px);
-      box-shadow: 0 2px 0 #1e659f;
-    }
-
-    .launch:active {
-      transform: translateY(4px);
-      box-shadow: none;
+    a:hover {
+      background: #00ff00;
+      color: black;
     }
 
     .footer {
-      margin-top: 28px;
-      color: #7892a6;
-      font-size: 13px;
+      margin-top: 35px;
+      color: #447744;
+      font-size: 12px;
     }
 
-    @media (max-width: 480px) {
-      main {
-        padding: 30px 18px 26px;
-      }
+    .blink {
+      animation: blink 1s steps(2, start) infinite;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        transition: none !important;
+    @keyframes blink {
+      to {
+        visibility: hidden;
       }
     }
   </style>
@@ -106,20 +91,34 @@
 <body>
   <main>
     <h1>404</h1>
-    <h2>Well, this is awkward.</h2>
 
-    <p class="subtitle">
+    <h2>PAGE NOT FOUND.</h2>
+
+    <p>
       sup, the servers are either down or I gave up on
       the page you tried to go to.
     </p>
 
-    <a class="launch" href="/">
-      Click this to go back to the main page &raquo;
+    <p class="warning">
+      THE REQUESTED PAGE COULD NOT BE LOCATED.
+    </p>
+
+    <p>
+      Maybe it never existed.<br>
+      Maybe it was moved.<br>
+      Maybe you weren't supposed to find it.
+    </p>
+
+    <a href="index.html">
+      RETURN TO MAIN PAGE &raquo;
     </a>
 
     <div class="footer">
-      Blueyfans Rather Odd Scratch Editor Of Zany Mystery
+      BLUEYFAN'S DIGITAL ODDITY REQUIEM<br>
+      ERROR 404 // END OF TRANSMISSION
+      <span class="blink">_</span>
     </div>
   </main>
 </body>
 </html>
+```
