@@ -1,0 +1,381 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NR_0S :: TERMINAL</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    color: #00ff66;
+    font-family: "Courier New", monospace;
+}
+
+#system-name {
+    position: fixed;
+    top: 10px;
+    right: 14px;
+    font-size: 20px;
+}
+
+#terminal {
+    position: absolute;
+    inset: 42px 12px 42px 12px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    scrollbar-width: none;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+#terminal::-webkit-scrollbar {
+    display: none;
+}
+
+#input-line {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#prompt {
+    font-size: 18px;
+}
+
+#command {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #00ff66;
+    font: inherit;
+    font-size: 16px;
+    caret-color: #00ff66;
+}
+
+.dim {
+    color: #00883b;
+}
+
+.error {
+    color: #ff3333;
+}
+
+.warning {
+    color: #ffff00;
+}
+
+/* THE SHUTDOWN INTERRUPTION */
+
+#interruption {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    color: #00ff66;
+    font-family: "Courier New", monospace;
+    font-size: 24px;
+    z-index: 100;
+    letter-spacing: 2px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="system-name">NR_0S</div>
+
+<div id="terminal"></div>
+
+<div id="input-line">
+    <span id="prompt">&gt;_</span>
+    <input id="command" autocomplete="off" spellcheck="false" autofocus>
+</div>
+
+<div id="interruption">you cant.</div>
+
+<script>
+const terminal = document.getElementById("terminal");
+const commandInput = document.getElementById("command");
+
+let interrupted = false;
+
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function typeLine(text, className = "", speed = 20) {
+    if (interrupted) return;
+
+    const line = document.createElement("div");
+
+    if (className) {
+        line.className = className;
+    }
+
+    terminal.appendChild(line);
+
+    for (const character of text) {
+        if (interrupted) return;
+
+        line.textContent += character;
+        terminal.scrollTop = terminal.scrollHeight;
+
+        await wait(speed);
+    }
+}
+
+async function startup() {
+    await wait(500);
+
+    const messages = [
+        "NR_0S SYSTEM INITIALIZED.",
+        "CHECKING LOCAL ARCHIVES...",
+        "ARCHIVE CONNECTION: UNSTABLE",
+        "LOADING RECORD 1444...",
+        "RECORD NOT FOUND.",
+        "ATTEMPTING SECONDARY CONNECTION...",
+        "CONNECTION ESTABLISHED.",
+        "WELCOME BACK."
+    ];
+
+    for (const message of messages) {
+        if (interrupted) return;
+
+        await typeLine(message);
+        await wait(450);
+    }
+
+    await typeLine("");
+    await typeLine("TYPE HELP TO VIEW AVAILABLE COMMANDS.", "dim");
+}
+
+function print(text, className = "") {
+    if (interrupted) return;
+
+    const line = document.createElement("div");
+
+    if (className) {
+        line.className = className;
+    }
+
+    line.textContent = text;
+    terminal.appendChild(line);
+    terminal.scrollTop = terminal.scrollHeight;
+}
+
+function showInterruption() {
+    interrupted = true;
+
+    terminal.innerHTML = "";
+
+    document.getElementById("input-line").style.display = "none";
+    document.getElementById("system-name").style.display = "none";
+
+    document.getElementById("interruption").style.display = "flex";
+}
+
+function showDuck() {
+    print("SECRET CODE ACCEPTED.");
+    print("RUBBER DUCK DEPLOYMENT INITIATED...");
+    print("");
+
+    const image = document.createElement("img");
+
+    image.src = "https://loremflickr.com/640/480/rubberduck?lock=" +
+        Math.floor(Math.random() * 100000);
+
+    image.alt = "Random rubber duck";
+
+    image.style.display = "block";
+    image.style.width = "min(320px, 90%)";
+    image.style.maxHeight = "260px";
+    image.style.objectFit = "contain";
+    image.style.margin = "12px 0";
+    image.style.border = "1px solid #00ff66";
+
+    terminal.appendChild(image);
+
+    const link = document.createElement("a");
+
+    link.href = "https://www.google.com/search?tbm=isch&q=rubber+duck";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "[ SEARCH RUBBER DUCKS ON GOOGLE ]";
+    link.style.color = "#00ff66";
+
+    terminal.appendChild(link);
+
+    print("");
+    print("DUCK STATUS: DEPLOYED.");
+    print("WHY IS THIS HERE?");
+}
+
+const commands = {
+
+    help() {
+        print("AVAILABLE COMMANDS:");
+        print("-------------------------");
+        print("HELP       - SHOW COMMANDS");
+        print("STATUS     - SYSTEM STATUS");
+        print("ABOUT      - ABOUT NR_0S");
+        print("ARCHIVES   - VIEW ARCHIVES");
+        print("HISTORY    - SYSTEM HISTORY");
+        print("CONNECT    - TEST CONNECTION");
+        print("DUCK       - ???");
+        print("CLEAR      - CLEAR TERMINAL");
+        print("EXIT       - RETURN TO MAIN PAGE");
+    },
+
+    status() {
+        print("SYSTEM STATUS");
+        print("-------------------------");
+        print("SYSTEM: NR_0S");
+        print("VERSION: 0.0.5");
+        print("CONNECTION: UNSTABLE");
+        print("ARCHIVES: PARTIALLY ACCESSIBLE");
+        print("LOCATION: UNKNOWN");
+        print("UPTIME: UNKNOWN");
+    },
+
+    about() {
+        print("NR_0S");
+        print("A SYSTEM FOR ACCESSING RECOVERED RECORDS.");
+        print("ORIGINAL CREATION DATE: UNKNOWN");
+        print("FIRST KNOWN REFERENCE: 1946");
+        print("PURPOSE: UNDOCUMENTED");
+    },
+
+    archives() {
+        print("AVAILABLE ARCHIVE RECORDS:");
+        print("-------------------------");
+        print("[1444] DUCK PREVENTION ERA");
+        print("[1946] N0IR NAMING RECORD");
+        print("[1950] COMPUTER POPULARIZATION");
+        print("[2002] DIGITAL ODDITY REQUIEM");
+        print("[????] CORRUPTED RECORD");
+        print("");
+        print("USE: OPEN [RECORD NUMBER]");
+    },
+
+    history() {
+        print("SYSTEM HISTORY:");
+        print("1444 - FIRST KNOWN N0IR RECORD");
+        print("1946 - NAME N0IR FIRST APPEARS");
+        print("1950 - N0IR BECOMES SIGNIFICANT");
+        print("2002 - DIGITAL ARCHIVE CREATED");
+        print("PRESENT - CONNECTION UNSTABLE");
+    },
+
+    connect() {
+        print("TESTING CONNECTION...");
+        setTimeout(() => {
+            print("CONNECTION ESTABLISHED.", "dim");
+        }, 900);
+    },
+
+    clear() {
+        terminal.innerHTML = "";
+    },
+
+    exit() {
+        print("RETURNING TO MAIN DIRECTORY...");
+
+        setTimeout(() => {
+            window.location.href = "index.html";
+        }, 1200);
+    }
+};
+
+function runCommand(raw) {
+    if (interrupted) return;
+
+    const input = raw.trim();
+
+    if (!input) return;
+
+    print("> " + input);
+
+    const parts = input.split(/\s+/);
+    const name = parts[0].toLowerCase();
+
+    if (name === "duck") {
+        showDuck();
+        return;
+    }
+
+    if (name === "open") {
+        const record = parts[1];
+
+        const records = {
+            "1444": "DUCK PREVENTION ERA\nSTATUS: RECOVERED\nDETAILS: EARLY N0IR EXISTENCE.",
+            "1946": "N0IR NAMING RECORD\nSTATUS: RECOVERED\nDETAILS: THE NAME N0IR WAS ESTABLISHED.",
+            "1950": "COMPUTER POPULARIZATION\nSTATUS: PARTIALLY RECOVERED\nDETAILS: N0IR BECAME IMPORTANT TO COMPUTER HISTORY.",
+            "2002": "DIGITAL ODDITY REQUIEM\nSTATUS: RECOVERED\nDETAILS: AN ARCHIVE OF DIGITAL ODDITIES.",
+            "????": "ERROR: RECORD DAMAGED.\nCONTENT COULD NOT BE RECOVERED."
+        };
+
+        if (records[record]) {
+            print(records[record]);
+        } else {
+            print("ERROR: RECORD NOT FOUND.", "error");
+        }
+
+        return;
+    }
+
+    if (commands[name]) {
+        commands[name]();
+    } else {
+        print("UNKNOWN COMMAND: " + name, "error");
+        print("TYPE HELP FOR COMMANDS.", "dim");
+    }
+}
+
+/* Detect shutdown while the user is typing */
+
+commandInput.addEventListener("input", function() {
+    if (commandInput.value.trim().toLowerCase() === "shutdown") {
+        commandInput.value = "";
+        showInterruption();
+    }
+});
+
+commandInput.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+        const value = commandInput.value;
+        commandInput.value = "";
+        runCommand(value);
+    }
+});
+
+document.addEventListener("click", function() {
+    if (!interrupted) {
+        commandInput.focus();
+    }
+});
+
+startup();
+</script>
+
+</body>
+</html>
